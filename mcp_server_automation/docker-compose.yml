@@ -1,0 +1,26 @@
+# docker-compose.yml
+
+# Specify the Compose file format version. '3.8' is a good recent version.
+version: '3.8'
+
+# Define the services (containers) that make up your application.
+services:
+  # 'web' is the name of our service (you can choose any name).
+  web:
+    # 'build: .' tells Docker Compose to look for a Dockerfile in the current directory
+    # (which is 'fastapi_hello_world/' in this setup) and build the image from it.
+    build: .
+    # 'ports' maps a port on your host machine to a port inside the container.
+    # "80:8080" means host_port:container_port.
+    # So, you'll access your app via http://localhost:80 (or just http://localhost).
+    ports:
+      - "80:8080"
+    # 'volumes' mounts your local directory into the container.
+    # This is essential for development: any changes you make to your local 'app' folder
+    # will be immediately reflected inside the running container.
+    # './app' refers to your local 'app' folder.
+    # '/app/app' refers to the destination path inside the container (where Uvicorn expects the app).
+    volumes:
+      - ./app:/app/app
+    # 'restart: on-failure' ensures the container automatically restarts if it crashes.
+    restart: on-failure
