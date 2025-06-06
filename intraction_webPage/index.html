@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alice AI Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Base styles for light mode */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Light gray background */
+            color: #1f2937; /* Dark gray text */
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .container {
+            max-width: 800px;
+            background-color: #ffffff; /* White background for container */
+            transition: background-color 0.3s ease;
+        }
+        .script-display {
+            background-color: #f3f4f6; /* Light gray for script display */
+            color: #1f2937; /* Dark text for script display */
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        h1, h2 {
+            color: #1f2937; /* Dark text for headings */
+            transition: color 0.3s ease;
+        }
+        p {
+            color: #4b5563; /* Medium gray for paragraphs */
+            transition: color 0.3s ease;
+        }
+
+        /* Dark mode styles - applied when 'dark' class is on <html> */
+        html.dark body {
+            background-color: #1a202c; /* Dark background */
+            color: #e0e0e0; /* Light gray text */
+        }
+        html.dark .container {
+            background-color: #2d3748; /* Darker background for container */
+        }
+        html.dark .script-display {
+            background-color: #4a5568; /* Even darker for script display */
+            color: #e0e0e0; /* Light text for script display */
+        }
+        html.dark h1, html.dark h2 {
+            color: #e0e0e0; /* Light text for headings */
+        }
+        html.dark p {
+            color: #a0aec0; /* Lighter gray for paragraphs */
+        }
+
+        /* Custom scrollbar for the script display area (adjust for dark mode) */
+        .script-display::-webkit-scrollbar {
+            width: 8px;
+        }
+        .script-display::-webkit-scrollbar-track {
+            background: #e0e0e0; /* Light mode track */
+            border-radius: 10px;
+        }
+        .script-display::-webkit-scrollbar-thumb {
+            background: #9ca3af; /* Light mode thumb */
+            border-radius: 10px;
+        }
+        .script-display::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; /* Light mode thumb hover */
+        }
+
+        html.dark .script-display::-webkit-scrollbar-track {
+            background: #2d3748; /* Dark mode track */
+        }
+        html.dark .script-display::-webkit-scrollbar-thumb {
+            background: #718096; /* Dark mode thumb */
+        }
+        html.dark .script-display::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0; /* Dark mode thumb hover */
+        }
+
+        /* Dark mode toggle button specific styles */
+        #theme-toggle {
+            background-color: #cbd5e0; /* Light gray for toggle in light mode */
+            color: #4a5568; /* Dark text for toggle in light mode */
+            transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s ease;
+        }
+        #theme-toggle:hover {
+            background-color: #a0aec0;
+        }
+        html.dark #theme-toggle {
+            background-color: #4a5568; /* Darker gray for toggle in dark mode */
+            color: #e0e0e0; /* Light text for toggle in dark mode */
+        }
+        html.dark #theme-toggle:hover {
+            background-color: #718096;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div class="container bg-white p-8 rounded-xl shadow-lg w-full relative">
+        <button id="theme-toggle" class="absolute top-4 right-4 p-2 rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400">
+            <svg id="sun-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h1M3 12h1m15.325-7.757l-.707.707M5.388 18.325l-.707.707M18.325 5.388l.707-.707M5.388 5.388l.707-.707M12 18a6 6 0 100-12 6 6 0 000 12z"></path>
+            </svg>
+            <svg id="moon-icon" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+            </svg>
+        </button>
+
+        <h1 class="text-3xl font-bold text-center mb-8">Alice AI Assistant</h1>
+
+        <p id="status-message" class="text-center text-gray-600 mb-6"></p>
+
+        <!-- AI Natural Response Section -->
+        <div class="mb-6">
+            <h2 class="text-xl font-semibold mb-4">Alice's Response:</h2>
+            <div id="response-display" class="script-display bg-gray-100 p-4 rounded-lg border border-gray-300 min-h-[80px] max-h-[200px] overflow-y-auto whitespace-pre-wrap">
+                Ask me something by recording your voice!
+            </div>
+        </div>
+
+        <!-- Ducky Script Section -->
+        <div class="mb-6" id="ducky-script-section" style="display: none;">
+            <h2 class="text-xl font-semibold mb-4">Computer Control Script:</h2>
+            <div id="script-display" class="script-display bg-gray-100 p-4 rounded-lg border border-gray-300 min-h-[100px] max-h-[200px] overflow-y-auto whitespace-pre-wrap">
+                No script generated yet.
+            </div>
+        </div>
+
+        <!-- Appliance Control Section -->
+        <div class="mb-6" id="appliance-control-section" style="display: none;">
+            <h2 class="text-xl font-semibold mb-4">Smart Home Control:</h2>
+            <div id="appliance-display" class="script-display bg-gray-100 p-4 rounded-lg border border-gray-300 min-h-[50px] max-h-[150px] overflow-y-auto">
+                <ul id="appliance-list" class="list-disc pl-5">
+                    <!-- Appliance controls will be added here -->
+                </ul>
+            </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row justify-center items-center gap-4 mt-8">
+            <div class="flex flex-col items-center">
+                <button id="record-button" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-full shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+                    Start Recording
+                </button>
+                <p class="text-sm text-gray-500 mt-2">Click to start/stop recording.</p>
+            </div>
+
+            <div class="flex flex-col items-center">
+                <button id="send-script-button" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-8 rounded-full shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    Execute Commands
+                </button>
+                <p class="text-sm text-gray-500 mt-2">Review before executing.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Configuration ---
+        // IMPORTANT: Replace these with your actual server URLs
+        const AI_SERVER_URL = 'http://127.0.0.1:8000/process_audio'; // Updated to match your API endpoint
+        const COMPUTER_EXECUTION_URL = 'http://192.168.1.100/execute'; // Replace with your ESP/device URL
+
+        // --- DOM Elements ---
+        const htmlElement = document.documentElement;
+        const themeToggle = document.getElementById('theme-toggle');
+        const sunIcon = document.getElementById('sun-icon');
+        const moonIcon = document.getElementById('moon-icon');
+        const recordButton = document.getElementById('record-button');
+        const statusMessage = document.getElementById('status-message');
+        const responseDisplay = document.getElementById('response-display');
+        const scriptDisplay = document.getElementById('script-display');
+        const duckyScriptSection = document.getElementById('ducky-script-section');
+        const applianceControlSection = document.getElementById('appliance-control-section');
+        const applianceList = document.getElementById('appliance-list');
+        const sendScriptButton = document.getElementById('send-script-button');
+
+        // --- Response Data Storage ---
+        let currentResponseData = null;
+
+        // --- Media Recorder Variables ---
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+
+        // --- Theme Management Functions ---
+        /**
+         * Applies the selected theme based on the 'theme' class on the <html> element.
+         * Updates the visibility of sun/moon icons.
+         * @param {string} theme - 'light' or 'dark'
+         */
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                htmlElement.classList.add('dark');
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+            } else {
+                htmlElement.classList.remove('dark');
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+            }
+            localStorage.setItem('theme', theme); // Save preference
+        }
+
+        /**
+         * Toggles the theme between light and dark.
+         */
+        function toggleTheme() {
+            if (htmlElement.classList.contains('dark')) {
+                applyTheme('light');
+            } else {
+                applyTheme('dark');
+            }
+        }
+
+        // --- Initialize Theme on Load ---
+        // Check local storage for user's preferred theme
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            applyTheme(savedTheme);
+        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            // If no preference saved, check system preference
+            applyTheme('dark');
+        } else {
+            applyTheme('light'); // Default to light mode
+        }
+
+        // --- Event Listeners ---
+        themeToggle.addEventListener('click', toggleTheme);
+
+        recordButton.addEventListener('click', () => {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        });
+
+        sendScriptButton.addEventListener('click', () => {
+            executeCommands();
+        });
+
+        // --- Functions ---
+
+        /**
+         * Starts the audio recording process.
+         * Requests microphone access and initializes MediaRecorder.
+         */
+        async function startRecording() {
+            try {
+                // Request access to the user's microphone
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = []; // Clear previous audio chunks
+
+                // Event listener for when audio data is available
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+
+                // Event listener for when recording stops
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' }); // Create a Blob from collected chunks
+                    sendAudioToAI(audioBlob); // Send the audio to the AI server
+                    // Stop all tracks in the stream to release microphone
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start(); // Start recording
+                isRecording = true;
+                recordButton.textContent = 'Stop Recording';
+                recordButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                recordButton.classList.add('bg-red-600', 'hover:bg-red-700');
+                statusMessage.textContent = 'Recording... Click again to stop.';
+                responseDisplay.textContent = 'Recording started... Waiting for AI response.';
+                sendScriptButton.disabled = true; // Disable send button while recording/waiting
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                statusMessage.textContent = 'Error: Could not access microphone. Please check permissions.';
+                recordButton.classList.remove('bg-red-600', 'hover:bg-red-700');
+                recordButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                recordButton.textContent = 'Start Recording';
+                isRecording = false;
+            }
+        }
+
+        /**
+         * Stops the audio recording process.
+         */
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop(); // This will trigger the onstop event
+                isRecording = false;
+                recordButton.textContent = 'Start Recording';
+                recordButton.classList.remove('bg-red-600', 'hover:bg-red-700');
+                recordButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                statusMessage.textContent = 'Recording stopped. Sending audio to AI...';
+            }
+        }
+
+        /**
+         * Sends the recorded audio Blob to the AI server.
+         * Now expects a JSON response from the backend.
+         * @param {Blob} audioBlob - The recorded audio data.
+         */
+        async function sendAudioToAI(audioBlob) {
+            const formData = new FormData();
+            formData.append('audio_file', audioBlob, 'audio.webm');
+
+            try {
+                const response = await fetch(AI_SERVER_URL, {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                // Changed from .text() to .json() to match our updated backend
+                const responseData = await response.json();
+                currentResponseData = responseData; // Store the response data
+
+                // Display the different parts of the response
+                displayAIResponse(responseData);
+                
+                statusMessage.textContent = 'AI response received! Review before executing commands.';
+                
+                // Enable or disable the execute button based on whether there are commands to execute
+                sendScriptButton.disabled = !(responseData.output_ducky_script || 
+                                            Object.keys(responseData.output_appliances_response || {}).length > 0);
+                
+            } catch (error) {
+                console.error('Error sending audio to AI server:', error);
+                statusMessage.textContent = `Error sending audio to AI: ${error.message}. Please try again.`;
+                responseDisplay.textContent = 'Failed to get AI response.';
+                sendScriptButton.disabled = true;
+            }
+        }
+
+        /**
+         * Displays the AI response data in the appropriate sections.
+         * @param {Object} responseData - The JSON response from the AI server.
+         */
+// Inside the displayAIResponse function in your HTML file
+
+function displayAIResponse(responseData) {
+    console.log("Full response data:", responseData);  // Add this for debugging
+    
+    // Display natural response
+    if (responseData.output_natural_response) {
+        responseDisplay.textContent = responseData.output_natural_response;
+    } else {
+        responseDisplay.textContent = "I'm processing your request...";
+    }
+
+    // Display ducky script if present
+    if (responseData.output_ducky_script) {
+        scriptDisplay.textContent = responseData.output_ducky_script;
+        duckyScriptSection.style.display = 'block';
+    } else {
+        duckyScriptSection.style.display = 'none';
+    }
+
+    // Display appliance controls if present
+    const applianceControls = responseData.output_appliances_response || {};
+    if (Object.keys(applianceControls).length > 0) {
+        applianceList.innerHTML = ''; // Clear previous controls
+        
+        for (const [device, state] of Object.entries(applianceControls)) {
+            const listItem = document.createElement('li');
+            listItem.textContent = `${device}: ${state}`;
+            listItem.className = state === 'on' ? 'text-green-600' : 'text-red-600';
+            applianceList.appendChild(listItem);
+        }
+        
+        applianceControlSection.style.display = 'block';
+    } else {
+        applianceControlSection.style.display = 'none';
+    }
+
+    // Add a "Raw Response" section for debugging
+    const debugSection = document.getElementById('debug-section') || createDebugSection();
+    const debugContent = document.getElementById('debug-content');
+    debugContent.textContent = JSON.stringify(responseData, null, 2);
+}
+
+function createDebugSection() {
+    const section = document.createElement('div');
+    section.id = 'debug-section';
+    section.className = 'mb-6 mt-4 pt-4 border-t border-gray-300';
+    
+    const heading = document.createElement('h2');
+    heading.className = 'text-xl font-semibold mb-4 flex items-center';
+    heading.innerHTML = 'Debug: Raw Response <span class="text-sm font-normal ml-2">(click to toggle)</span>';
+    
+    const content = document.createElement('pre');
+    content.id = 'debug-content';
+    content.className = 'script-display bg-gray-100 p-4 rounded-lg border border-gray-300 max-h-[200px] overflow-y-auto text-xs';
+    content.style.display = 'none'; // Hidden by default
+    
+    heading.addEventListener('click', () => {
+        content.style.display = content.style.display === 'none' ? 'block' : 'none';
+    });
+    
+    section.appendChild(heading);
+    section.appendChild(content);
+    document.querySelector('.container').appendChild(section);
+    
+    return section;
+}
+
+        /**
+         * Sends commands (ducky script or appliance controls) to the execution endpoint.
+         */
+        async function executeCommands() {
+            if (!currentResponseData) {
+                statusMessage.textContent = 'No commands to execute.';
+                return;
+            }
+
+            statusMessage.textContent = 'Sending commands for execution...';
+            sendScriptButton.disabled = true; // Disable button to prevent multiple sends
+
+            try {
+                const response = await fetch(COMPUTER_EXECUTION_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        ducky_script: currentResponseData.output_ducky_script || "",
+                        appliance_controls: currentResponseData.output_appliances_response || {}
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                statusMessage.textContent = `Commands executed successfully! Response: ${result.message || JSON.stringify(result)}`;
+            } catch (error) {
+                console.error('Error executing commands:', error);
+                statusMessage.textContent = `Error executing commands: ${error.message}.`;
+            } finally {
+                sendScriptButton.disabled = false; // Re-enable the button
+            }
+        }
+    </script>
+</body>
+</html>
