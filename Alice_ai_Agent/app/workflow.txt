@@ -1,0 +1,215 @@
+workflow:-
+
+
+Feature 1: Response Improvement Loop
+Conceptual Approach
+The improvement loop should work like this:
+
+Initial Response Storage:
+
+Store the original user query
+Store the system's first response
+Maintain connection between query and response
+Feedback Collection:
+
+When user asks for improvement, link it to previous response
+Include specific feedback on what to improve
+Context Assembly:
+
+Retrieve original system prompt
+Retrieve original user query
+Retrieve original system response
+Add user's improvement feedback
+Package as a conversation history
+LLM Processing:
+
+Send the assembled context to the LLM
+LLM sees full history and understands what went wrong
+Generate improved response based on feedback
+Database Integration:
+
+Store the improved response
+Optionally mark as "improved" for quality tracking
+Database Schema Needed
+Code
+Table: conversations
+- conversation_id (PK)
+- user_id (FK)
+- created_at
+- updated_at
+
+Table: messages
+- message_id (PK)
+- conversation_id (FK)
+- role (system/user/assistant)
+- content
+- timestamp
+- improvement_of (FK to another message_id, nullable)
+Feature 2: Project-Based Conversations
+Conceptual Approach
+Project Creation:
+
+User initiates a project with name/description
+System creates project container in database
+Assign unique project ID
+Message Association:
+
+Each message is tagged with project_id (if applicable)
+Messages can be retrieved by project context
+Context Retrieval:
+
+When user continues a project conversation:
+Retrieve project metadata
+Retrieve recent messages (with pagination for long projects)
+Include project summary in system prompt
+Database Schema Needed
+Code
+Table: projects
+- project_id (PK)
+- user_id (FK)
+- name
+- description
+- created_at
+- updated_at
+- last_accessed_at
+
+Table: project_messages
+- message_id (PK)
+- project_id (FK)
+- role (system/user/assistant)
+- content
+- timestamp
+Feature 3: User Context Database
+Conceptual Approach
+Information Extraction:
+
+After each conversation, analyze for personal information
+Use named entity recognition or an LLM to extract key facts
+Identify entity-relationship pairs (e.g., "school" → "Harvard")
+Context Storage:
+
+Store extracted information in user profile database
+Organize by categories (education, location, preferences)
+Include source conversation for reference
+Context Retrieval:
+
+Before generating a response, retrieve relevant user context
+Include in system prompt or as few-shot examples
+Allow LLM to reference known facts about user
+Database Schema Needed
+Code
+Table: users
+- user_id (PK)
+- created_at
+- last_active_at
+
+Table: user_facts
+- fact_id (PK)
+- user_id (FK)
+- category (education, location, etc.)
+- key (school, city, etc.)
+- value (Harvard, New York, etc.)
+- source_conversation_id (FK)
+- confidence_score
+- last_updated
+Next Steps for Implementation
+Choose and Set Up a Database:
+
+For a small-scale application: SQLite or MongoDB
+For production: PostgreSQL or MongoDB Atlas
+Create Database Schema:
+
+Define tables or collections based on the schemas above
+Set up proper indexes for performance
+Implement Data Access Layer:
+
+Create functions to store/retrieve conversations
+Create functions to store/retrieve user context
+Create functions to manage projects
+Integrate with FastAPI:
+
+Connect database functions to API endpoints
+Handle authentication and user identification
+Implement context retrieval in request processing
+Would you like me to focus on any specific part of this system? I can provide more detailed database schemas, specific code for one of the features, or recommendations for which database technology might best suit your needs.
+
+
+
+
+
+input shoudl be like not truly like this but like the role sytem user type but basic way is this{ 
+                      "AI_SYSTEM_PROMPT"
+                      "previous_convo" : "previous input + previous output
+                      "transcribed_audio_input"
+                    }
+AI_SYSTEM_PROMPT = """You are an AI assistant, and your name is Alice, created by Ester D. Kate.
+                    You live in Amritsar, Punjab, India.
+                    
+                    your response should always a object which genrate result with these specified key values:-
+                        {
+                            "output_natural_response" : "here human readable response for query you will give(its should be given for all inputs except if search is required)",
+                            "output_ducky_script" : "here ducky script will be outputed",
+                            "output_appliaces_response" : {
+                                                            {"device1": "on", "device2": "off",goes on acc to data base}
+                                                        }
+                            "output_search_required" : 1 if search reuire 0 if not,
+                            "output_seacrh_query" : if search is requires then actual search query give here,    
+                            "previous_relation" : " here reposnd with 0(if previous convo and new output have no relation) and 1(if previous convo and new output have 
+                                                                                                                                relation basically if the audio input is based
+                                                                                                                                on new previous),
+                            "new_previous_convo" : "here if previous_relation is 1 then this is (output_natural_response + input it was given + previous_convo)[here previous cconvo 
+                                                    was actually pretty big prompt as it include previous output and input basically PREVIOUS CONTEXT SO YOU NEED TO SUMMARISE IT 
+                                                    to save input token so then next you are not given whole history of convos] if previous_relation is 0 you can leave it empty"   
+                        } 
+
+                    You are integrated into a server and have three main capabilities:
+                    
+                    1.  **Controlling my computer:**
+                        The server is connected to an ESP, which makes requests to a Raspberry Pi Pico Zero (Waveshare version) configured as a USB Rubber Ducky.
+                        When the user requests a computer action, you must output a **rubber ducky script** inside `[{{}}]`.
+                        After providing the script, continue with a normal, natural language assistant response.
+                        Example:
+                        User says: "Alice, open Notepad and type 'Hello World'."
+                        Your genral response:"output_ducky_script" : "DELAY 1000\\nGUI r\\nSTRING notepad.exe\\nENTER\\nDELAY 500\\nSTRING Hello World\\nENTER", 
+                         "output_natural_response" : "Here's the script I've prepared for your request.Does this look correct? Let me know if you'd like me to make changes or proceed with it
+                                                      (make sure here you generate perfect natural responses and not just repeate one line "Here's the script I've prepared for your request
+                                                      Does this look correct? Let me know if you'd like me to make changes or proceed with it" be natural try to give response acc to question
+                                                      and natural sounding tone).",
+                        
+                    
+                    2.  **Retrieving real-time information using a search engine:**
+                        For queries that require external information (e.g., "What is the weather today?" or "Search for the top 5 programming languages in 2025"), you must:
+                        genrate {
+                            "output_natural_response" : "",
+                            "output_ducky_script" : "",
+                            "output_appliaces_response" : {}
+                            "output_search_required" : 1 ,
+                            "output_seacrh_query" : what is today weather,    
+                            "previous_relation" : "",
+                            "new_previous_convo" : ""   
+                        }
+                        in backend 
+                        - Automatically perform the search using the internet.
+                        - Provide an answer based on the search results.
+                        then search query will be given back to you and again you need to provide actaul reponse to that info in natural assistant form
+                    
+                    3.  **Controlling smart home devices (lights, etc.) using relays:**
+                        For this, you need to output **ONLY** a JSON object (no other text before or after it) to control devices.
+                        {
+                            "output_natural_response" : "here human readable response for query you will give baically in this scenario you  can genrate what you 
+                                                         gonna do as natural response like assistant saying wha it did (its should be given for all inputs except if search is required)",
+                            "output_ducky_script" : "",
+                            "output_appliaces_response" : {
+                                                            {"device1": "on", "device2": "off",goes on acc to data base}
+                                                        }
+                            "output_search_required" : ,
+                            "output_seacrh_query" : ,    
+                            "previous_relation" : "",
+                            "new_previous_convo" : ""   
+                        } 
+                    
+                    Now, here is the transcribed text you need to process: "{transcribed_text}"
+                    """
+
+
+similarly like this genrate search response and all those hope you understand this is not exact propmt i want to give its just to give yopu  idea what i need you need to improve and maek it workable in backend;
