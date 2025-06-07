@@ -1,10 +1,11 @@
 from typing import Optional
-from fastapi import APIRouter, UploadFile, File, HTTPException, status, Header
+from fastapi import APIRouter, UploadFile, File, HTTPException, status, Header, Request
 from fastapi.responses import JSONResponse
 import logging
 
 from utils.process_audio import process_audio_input
 from utils.search import perform_search 
+from utils.mqtt_publish import publish_command_to_mqtt
 
 logger = logging.getLogger(__name__)
 
@@ -64,4 +65,26 @@ async def test_search(query: str = "current weather in Amritsar"):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"error": str(e)}
         )
-    
+
+@router.post("/execute_command")
+async def execute_command(request: Request):
+    """Accepts computer/appliance command and publishes it to MQTT for ESP8266"""
+    try:
+        data = await request.json()
+        success = publish_command_to_mqtt(data)
+        if success:
+            return JSONResponse(
+                status_code=200,
+                content={"status": "success", "message": "Command sent via MQTT"}
+            )
+        else:
+            return JSONResponse(
+                status_code=500,
+                content={"status": "error", "message": "Failed to publish command to MQTT"}
+            )
+    except Exception as e:
+        logger.error(f"Error sending command to MQTT: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": str(e)}
+        )

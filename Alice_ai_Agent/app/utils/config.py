@@ -17,6 +17,11 @@ MONGO_URI = os.getenv(
 )
 
 SEARXNG_URL = os.getenv("SEARXNG_URL")
+MQTT_BROKER = os.getenv("MQTT_BROKER")
+MQTT_PORT = int(os.getenv("MQTT_PORT"))
+MQTT_TOPIC = os.getenv("MQTT_TOPIC")
+MQTT_USER = os.getenv("MQTT_USER")
+MQTT_PASS = os.getenv("MQTT_PASS")
 
 AI_SYSTEM_PROMPT = """You are an AI assistant, and your name is Alice, created by Ester D. Kate.
                     You live in Amritsar, Punjab, India.
