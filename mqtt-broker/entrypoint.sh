@@ -3,15 +3,13 @@ set -e
 
 PASSFILE="/mosquitto/config/passwordfile"
 
-if [ ! -f "$PASSFILE" ]; then
-  if [ -z "$MQTT_USERNAME" ] || [ -z "$MQTT_PASSWORD" ]; then
-    echo "MQTT_USERNAME and MQTT_PASSWORD must be set!"
-    exit 1
-  fi
-  echo "Creating Mosquitto password file..."
+# Always generate passwordfile from env
+if [ -n "$MQTT_USERNAME" ] && [ -n "$MQTT_PASSWORD" ]; then
+  echo "Creating/updating Mosquitto password file..."
   mosquitto_passwd -b -c "$PASSFILE" "$MQTT_USERNAME" "$MQTT_PASSWORD"
 else
-  echo "Mosquitto password file already exists."
+  echo "MQTT_USERNAME and MQTT_PASSWORD env vars must be set!"
+  exit 1
 fi
 
 exec "$@"
