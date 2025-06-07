@@ -4,8 +4,12 @@ set -e
 PASSFILE="/mosquitto/config/passwordfile"
 echo "Creating/updating Mosquitto password file at $PASSFILE ..."
 
-rm -f "$PASSFILE"  # Always create fresh
+# If the password file exists, remove it (only if Mosquitto is NOT running yet)
+if [ ! -s "$PASSFILE" ]; then
+  touch "$PASSFILE"
+fi
 
+# Add all users from environment, as many as are set
 i=1
 while :; do
     USER_VAR="MQTT_USER${i}"
@@ -26,11 +30,6 @@ while :; do
     fi
     i=$((i+1))
 done
-
-if [ ! -s "$PASSFILE" ]; then
-    echo "No users added! Please set at least MQTT_USER1 and MQTT_PASS1 in your .env."
-    exit 1
-fi
 
 chmod 600 "$PASSFILE"
 chown mosquitto:mosquitto "$PASSFILE" || true
