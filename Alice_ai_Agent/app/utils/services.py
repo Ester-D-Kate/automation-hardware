@@ -1,5 +1,6 @@
 import logging
 import json
+import re
 from typing import Dict
 
 logger = logging.getLogger(__name__)
@@ -13,32 +14,30 @@ def extract_json_from_llm_response(response_content: str) -> Dict:
     except json.JSONDecodeError as e:
         logger.warning(f"Direct JSON parsing failed: {e}")
         
-        import re
-        pattern = r'(\{[\s\S]*\})' 
-        match = re.search(pattern, response_content)
-        
-        if match:
-            json_str = match.group(1)
+        try:
+            cleaned_content = response_content
+            control_chars = ''.join([chr(x) for x in range(32) if x not in [9, 10, 13]])
+            for char in control_chars:
+                cleaned_content = cleaned_content.replace(char, '')
             
-            try:
-                return json.loads(json_str)
+            return json.loads(cleaned_content)
+        except json.JSONDecodeError:
+            logger.error("Failed to parse JSON after control character fixes")
             
-            except json.JSONDecodeError:
+            pattern = r'(\{[\s\S]*\})' 
+            match = re.search(pattern, response_content)
+            
+            if match:
+                json_str = match.group(1)
                 try:
-                    processed_json = json_str
-                    for c in ['\n', '\r', '\t']:
-                        if c == '\n':
-                            processed_json = processed_json.replace(c, '\\n')
-                        elif c == '\r':
-                            processed_json = processed_json.replace(c, '\\r')
-                        elif c == '\t':
-                            processed_json = processed_json.replace(c, '\\t')
-                     
-                    fixed_json = json.loads(processed_json)
-                    logger.info("Successfully parsed JSON after fixing control characters")
-                    return fixed_json
-                except json.JSONDecodeError as e:
-                    logger.error(f"Failed to parse JSON after control character fixes: {e}")
+                    return json.loads(json_str)
+                except json.JSONDecodeError:
+                    try:
+                        fixed_str = re.sub(r'([{,]\s*)(\w+)(\s*:)', r'\1"\2"\3', json_str)
+                        fixed_str = fixed_str.replace("'", '"')
+                        return json.loads(fixed_str)
+                    except json.JSONDecodeError:
+                        logger.error(f"Failed to fix and parse JSON: {json_str[:100]}...")
         
         logger.error(f"Failed to extract valid JSON from LLM response: {response_content[:300]}...")
         return {
@@ -50,4 +49,3 @@ def extract_json_from_llm_response(response_content: str) -> Dict:
             "previous_relation": 0,
             "new_previous_convo": ""
         }
-    

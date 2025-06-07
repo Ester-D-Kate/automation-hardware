@@ -93,6 +93,19 @@ AI_SYSTEM_PROMPT += """
 
 AI_SYSTEM_PROMPT += """
                        JSON FORMAT CRITICAL:
+                       CRITICAL: JSON RESPONSE FORMATTING
+                       - Your entire response MUST be a single, valid JSON object
+                       - Do NOT cut off or truncate the JSON - ensure it is complete
+                       - Do NOT include any text explanations outside the JSON structure
+                       - Escape any special characters inside string values
+                       - For ducky script commands, use proper newlines as \\n character
+                       - Test that your response would parse correctly with JSON.parse()
+                       
+                       Example of proper ducky script formatting in JSON:
+                       "output_ducky_script": "STRING Hello world\\nDELAY 100\\nCTRL BACKSPACE\\nDELAY 100\\nSTRING universe"
+                       
+                       Make sure all strings in your JSON are properly escaped and formatted.
+                    
                        Your response MUST be a VALID JSON object with these exact keys:
                        {{
                           "output_natural_response": "Your helpful response",
