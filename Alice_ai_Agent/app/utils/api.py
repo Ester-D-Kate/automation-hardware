@@ -5,13 +5,24 @@ import logging
 
 from utils.process_audio import process_audio_input
 from utils.search import perform_search 
-from utils.mqtt_publish import publish_command_to_mqtt
+
+from mqtt_utils.mqtt_ducky_windows import publish_ducky_script_to_mqtt
+from mqtt_utils.mqtt_appliances import publish_appliance_command_to_mqtt
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 conversation_contexts = {}
+
+def clean_response(data: dict) -> dict:
+    # Only keep non-empty fields
+    result = {}
+    if data.get("ducky_script"):
+        result["ducky_script"] = data["ducky_script"]
+    if data.get("appliance_controls") and isinstance(data["appliance_controls"], dict) and len(data["appliance_controls"]) > 0:
+        result["appliance_controls"] = data["appliance_controls"]
+    return result
 
 @router.post("/process_audio")
 async def api_process_audio(
@@ -68,10 +79,17 @@ async def test_search(query: str = "current weather in Amritsar"):
 
 @router.post("/execute_command")
 async def execute_command(request: Request):
-    """Accepts computer/appliance command and publishes it to MQTT for ESP8266"""
     try:
         data = await request.json()
-        success = publish_command_to_mqtt(data)
+        if data.get("ducky_script"):
+            success = publish_ducky_script_to_mqtt({"ducky_script": data["ducky_script"]})
+        elif data.get("appliance_controls"):
+            success = publish_appliance_command_to_mqtt({"appliance_controls": data["appliance_controls"]})
+        else:
+            return JSONResponse(
+                status_code=400,
+                content={"status": "error", "message": "No valid command found in payload"}
+            )
         if success:
             return JSONResponse(
                 status_code=200,
