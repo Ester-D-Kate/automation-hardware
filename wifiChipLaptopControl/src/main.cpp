@@ -3,11 +3,11 @@
 #include <PubSubClient.h>
 
 // WiFi credentials
-const char* ssid = "Airtel_arun_7500";
-const char* password = "7087523885s";
+const char* ssid = "ED_2G";
+const char* password = "hcirocks";
 
 // MQTT Broker settings
-const char* mqtt_server = "192.168.1.4";
+const char* mqtt_server = "192.168.0.128";
 const int mqtt_port = 1883;
 const char* mqtt_user = "esp_lDrago_windows";
 const char* mqtt_pass = "D1r2a3g4o5";

@@ -1,0 +1,18 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"name": "appliances_control_hardware",
+			"path": "../appliances_control_hardware"
+		},
+		{
+			"name": "wifiChipLaptopControl",
+			"path": "../wifiChipLaptopControl"
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "Automation_hardware"
+	}
+}
