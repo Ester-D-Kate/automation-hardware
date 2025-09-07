@@ -1,15 +1,12 @@
 {
 	"folders": [
 		{
-			"path": ".."
+			"name": "wifiChipLaptopControl",
+			"path": "wifiChipLaptopControl"
 		},
 		{
 			"name": "appliances_control_hardware",
-			"path": "../appliances_control_hardware"
-		},
-		{
-			"name": "wifiChipLaptopControl",
-			"path": "../wifiChipLaptopControl"
+			"path": "appliances_control_hardware"
 		}
 	],
 	"settings": {

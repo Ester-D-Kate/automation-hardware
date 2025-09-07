@@ -106,3 +106,18 @@ async def execute_command(request: Request):
             status_code=500,
             content={"status": "error", "message": str(e)}
         )
+
+@router.post("/upload_screenshot")
+async def upload_screenshot(screenshot: UploadFile = File(...), user_id: Optional[str] = Header("anonymous_user")):
+    try:
+        # Save screenshot or process as needed
+        content = await screenshot.read()
+        # You can save to disk, or pass to OCR/vision pipeline here
+        # For now, just acknowledge receipt
+        # Save to a temp folder if you want to process later
+        with open(f"/tmp/{user_id}_latest_screen.png", "wb") as f:
+            f.write(content)
+        return {"status": "success", "message": "Screenshot uploaded"}
+    except Exception as e:
+        logger.error(f"Failed to upload screenshot: {e}")
+        return {"status": "error", "message": str(e)}
