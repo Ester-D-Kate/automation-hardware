@@ -24,7 +24,7 @@ async def transcribe_audio(audio_file: UploadFile) -> str:
         # Call Groq's transcription API
         transcription = client.audio.transcriptions.create(
             file=(audio_buffer.name, audio_buffer.getvalue()),
-            model="distil-whisper-large-v3-en",
+            model="whisper-large-v3",
             response_format="json"
         )
         
@@ -52,6 +52,12 @@ async def process_audio_input(audio_file: UploadFile, previous_context: str = ""
             "new_previous_convo": ""
         }
 
+    # 💬 Log conversation context for debugging
+    if previous_context:
+        logger.info(f"💬 PREVIOUS CONTEXT: {previous_context[:200]}...")
+    
+    logger.info(f"🎤 USER INPUT: {transcribed_text}")
+
     llm_response = get_llm_response(transcribed_text, previous_context)
     
     if llm_response.get("output_search_required") == 1 and llm_response.get("output_search_query"):
@@ -74,4 +80,12 @@ async def process_audio_input(audio_file: UploadFile, previous_context: str = ""
         except Exception as e:
             logger.error(f"Error getting final response with search results: {e}")
             llm_response["output_natural_response"] = f"Based on my search, {search_result['results'][:500]}..."
+    
+    # 🔧 DEBUG: Log what the AI generated
+    if llm_response.get("output_ducky_script"):
+        logger.warning(f"🧠 AI GENERATED DUCKY SCRIPT: {repr(llm_response['output_ducky_script'])}")
+    
+    # Add transcribed text to response for conversation context
+    llm_response["transcribed_text"] = transcribed_text
+    
     return llm_response

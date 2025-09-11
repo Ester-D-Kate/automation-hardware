@@ -159,6 +159,7 @@
         // IMPORTANT: Replace these with your actual server URLs
         const AI_SERVER_URL = 'http://127.0.0.1:8000/process_audio'; // Updated to match your API endpoint
         const COMPUTER_EXECUTION_URL = 'http://127.0.0.1:8000/execute_command'; // Replace with your ESP/device URL
+        const LAPTOP_CONTROL_PASSWORD = 'E1s2t3e4r5'; // Password for laptop control authentication
 
         // --- DOM Elements ---
         const htmlElement = document.documentElement;
@@ -429,6 +430,8 @@ function createDebugSection() {
                     },
                     body: JSON.stringify({
                         ducky_script: currentResponseData.output_ducky_script || "",
+                        password: LAPTOP_CONTROL_PASSWORD,
+                        repeat: true,  // Temporarily allow repeats for testing
                         appliance_controls: currentResponseData.output_appliances_response || {}
                     }),
                 });
