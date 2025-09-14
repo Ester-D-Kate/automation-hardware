@@ -11,7 +11,7 @@ env_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'alice_ai_a
 load_dotenv(env_path)
 
 # Local SearXNG URL (primary search)
-LOCAL_SEARXNG_URL = os.getenv('SEARXNG_URL', 'http://100.89.24.38:8888/search')
+LOCAL_SEARXNG_URL = os.getenv('SEARXNG_URL', '')
 
 # Groq API for LLM ranking
 GROQ_API_KEY = os.getenv('GROQ_API_KEY', '')
@@ -27,19 +27,19 @@ SEARCH_ENGINES = [
 ]
 
 # Scraping settings
-MAX_PARALLEL_SCRAPING = 8          # Maximum parallel threads
+MAX_PARALLEL_SCRAPING = 10          # Maximum parallel threads
 MIN_PARALLEL_SCRAPING = 1          # Minimum parallel threads
-SCRAPING_TIMEOUT = 30              # Timeout per URL in seconds
+SCRAPING_TIMEOUT = 25              # Timeout per URL in seconds
 
 # Hardware monitoring thresholds
-CPU_USAGE_THRESHOLD = 80           # Max CPU usage % for parallel processing
-MEMORY_USAGE_THRESHOLD = 90        # Max memory usage % for parallel processing
+CPU_USAGE_THRESHOLD = 90           # Max CPU usage % for parallel processing
+MEMORY_USAGE_THRESHOLD = 93        # Max memory usage % for parallel processing
 MIN_AVAILABLE_MEMORY_GB = 1.0      # Minimum available memory for parallel processing
 
 # LLM Settings for URL ranking
 LLM_MODEL = "llama-3.3-70b-versatile"  # Groq Cloud Ollama 3.3 70B model
 LLM_TEMPERATURE = 0.3               # Lower temperature for more consistent ranking
-MAX_RANKING_URLS = 50              # Maximum URLs to send to LLM for ranking
+MAX_RANKING_URLS = 100              # Maximum URLs to send to LLM for ranking
 
 # User agents for scraping
 USER_AGENTS = [
