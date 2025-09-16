@@ -4,6 +4,14 @@ FastAPI web server + command line demo
 """
 
 import asyncio
+import sys
+
+# Fix Windows asyncio event loop policy for Playwright
+if sys.platform.startswith('win'):
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
+# Your existing imports continue below...
+import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel

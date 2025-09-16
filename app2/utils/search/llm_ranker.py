@@ -1,12 +1,11 @@
 """
-LLM URL Ranker using Groq Cloud
-Uses Ollama 70B to rank URLs by relevance to user query
+LLM URL Ranker + METHOD SELECTOR using Groq Cloud
+SMART: Ranks URLs AND suggests best scraping method for each!
 """
 
 import json
 from .search_config import GROQ_API_KEY, LLM_MODEL, LLM_TEMPERATURE, MAX_RANKING_URLS
 
-# Try to import groq, handle if not installed
 try:
     from groq import Groq
     GROQ_AVAILABLE = True
@@ -14,32 +13,28 @@ except ImportError:
     GROQ_AVAILABLE = False
     print("⚠️ Groq not installed. Install with: pip install groq")
 
-async def rank_urls_with_llm(search_results, user_query, required_count=5):
+async def rank_urls_with_method_selection(search_results, user_query, required_count=5):
     """
-    Use LLM to rank URLs by relevance to user query
+    🧠 SMART: LLM ranks URLs AND suggests best scraping method for each!
     
-    Args:
-        search_results: List of search results with title, url, snippet
-        user_query: Original user query
-        required_count: How many top results to return
-    
-    Returns:
-        List of ranked results (best first)
+    Returns URLs with:
+    - Relevance ranking
+    - Suggested scraping method (beautifulsoup/crawl4ai/playwright)
+    - Reasoning for method choice
     """
     if not GROQ_AVAILABLE or not GROQ_API_KEY:
         print("⚠️ LLM ranking not available, using simple ranking")
-        return simple_rank_urls(search_results, user_query, required_count)
-    
-    print(f"🧠 Ranking {len(search_results)} URLs with LLM for query: '{user_query}'")
-    
-    # Limit URLs sent to LLM to avoid token limits
+        return simple_rank_urls_with_methods(search_results, user_query, len(search_results))
+
+    print(f"🧠 SMART LLM: Ranking {len(search_results)} URLs + Method Selection")
+    print(f"🎯 Query: '{user_query}'")
+
     urls_to_rank = search_results[:MAX_RANKING_URLS]
-    
+
     try:
-        # Initialize Groq client
         client = Groq(api_key=GROQ_API_KEY)
-        
-        # Prepare URLs for LLM
+
+        # Prepare URLs for LLM with method selection
         url_data = []
         for i, result in enumerate(urls_to_rank):
             url_data.append({
@@ -48,63 +43,73 @@ async def rank_urls_with_llm(search_results, user_query, required_count=5):
                 'url': result.get('url', ''),
                 'snippet': result.get('snippet', '')
             })
-        
-        # Create ranking prompt
-        ranking_prompt = create_ranking_prompt(user_query, url_data, required_count)
-        
-        # Call LLM
-        print("🤖 Asking LLM to rank URLs...")
+
+        # Create SMART ranking prompt with method selection
+        ranking_prompt = create_smart_ranking_prompt(user_query, url_data, len(url_data))
+
+        print("🤖 Asking LLM to rank URLs + suggest scraping methods...")
         response = client.chat.completions.create(
             model=LLM_MODEL,
             messages=[
                 {
                     "role": "system",
-                    "content": "You are an expert at ranking web search results by relevance to user queries. Always respond with valid JSON."
+                    "content": "You are an expert at ranking web search results AND determining the best web scraping method for each URL. You understand when sites need JavaScript rendering (Playwright), advanced extraction (Crawl4AI), or simple parsing (BeautifulSoup)."
                 },
                 {
-                    "role": "user", 
+                    "role": "user",
                     "content": ranking_prompt
                 }
             ],
             temperature=LLM_TEMPERATURE,
-            max_tokens=1000
+            max_tokens=3000  # Increased for method selection
         )
-        
-        # Parse LLM response
+
         llm_output = response.choices[0].message.content.strip()
-        ranked_results = parse_llm_ranking(llm_output, search_results)
-        
-        print(f"✅ LLM ranked {len(ranked_results)} URLs")
-        return ranked_results[:required_count]
-        
+        ranked_results = parse_smart_llm_ranking(llm_output, search_results)
+
+        print(f"✅ SMART LLM completed: {len(ranked_results)} URLs ranked with methods")
+        return ranked_results
+
     except Exception as e:
         print(f"❌ LLM ranking failed: {e}")
         print("🔄 Falling back to simple ranking")
-        return simple_rank_urls(search_results, user_query, required_count)
+        return simple_rank_urls_with_methods(search_results, user_query, len(search_results))
 
-def create_ranking_prompt(user_query, url_data, required_count):
+def create_smart_ranking_prompt(user_query, url_data, total_count):
     """
-    Create the prompt for LLM URL ranking
+    Create SMART prompt for URL ranking + method selection
     """
     prompt = f"""
-Rank these web search results by relevance to the user query: "{user_query}"
+Rank ALL these web search results by relevance to: "{user_query}"
 
-Return the top {required_count} most relevant results as JSON array with this format:
+For EACH URL, determine the BEST scraping method:
+
+**beautifulsoup**: Simple static HTML sites, blogs, news articles, documentation
+**crawl4ai**: Complex sites with dynamic content but no heavy JavaScript (e-commerce, modern news sites, academic papers)
+**playwright**: JavaScript-heavy sites, SPAs, social media, interactive applications
+
+Return ALL {total_count} results as JSON array:
+
 [
-    {{"id": 0, "relevance_score": 95, "reason": "why this is most relevant"}},
-    {{"id": 2, "relevance_score": 85, "reason": "why this is second most relevant"}},
-    ...
+  {{"id": 0, "relevance_score": 95, "method": "beautifulsoup", "reason": "Static blog site, simple HTML structure"}},
+  {{"id": 2, "relevance_score": 85, "method": "crawl4ai", "reason": "E-commerce site with dynamic content but no heavy JS"}},
+  {{"id": 1, "relevance_score": 75, "method": "playwright", "reason": "JavaScript-heavy application requiring browser rendering"}},
+  ... (continue for ALL {total_count} URLs)
 ]
 
-Consider:
-1. Title relevance to the query
-2. Snippet content match
-3. URL domain authority and trustworthiness
-4. How well the content would answer the user's question
+**Analysis Guidelines:**
+- **beautifulsoup**: Wikipedia, simple blogs, static documentation, basic news sites
+- **crawl4ai**: Amazon, complex news sites, academic journals, modern content sites
+- **playwright**: Twitter, Facebook, Instagram, SPAs, sites requiring JavaScript
 
-Search Results to rank:
+Consider:
+1. URL domain patterns (github.com, stackoverflow.com, etc.)
+2. Site complexity indicators in title/snippet
+3. Known site types requiring specific methods
+
+Search Results:
 """
-    
+
     for item in url_data:
         prompt += f"""
 ID: {item['id']}
@@ -113,117 +118,159 @@ URL: {item['url']}
 Snippet: {item['snippet']}
 ---
 """
-    
-    prompt += f"\nReturn only the JSON array with the top {required_count} most relevant results."
+
+    prompt += f"\nReturn JSON array with ALL {total_count} URLs ranked by relevance with scraping method suggestions."
     return prompt
 
-def parse_llm_ranking(llm_output, original_results):
+def parse_smart_llm_ranking(llm_output, original_results):
     """
-    Parse LLM ranking response and return ordered results
-    Enhanced to handle Ollama 3.3 70B output format variations
+    Parse LLM ranking response with method selection
     """
     try:
-        print(f"🔍 Debug LLM Output (first 200 chars): {llm_output[:200]}")
+        print(f"🔍 Parsing SMART LLM output...")
         
-        # Multiple strategies to extract JSON
+        # Extract JSON
         json_str = None
-        
-        # Strategy 1: Look for [ ] array
         start_idx = llm_output.find('[')
         end_idx = llm_output.rfind(']') + 1
+        
         if start_idx >= 0 and end_idx > start_idx:
             json_str = llm_output[start_idx:end_idx]
         
-        # Strategy 2: Look for { } object that might contain an array
-        elif '{' in llm_output and '}' in llm_output:
-            start_idx = llm_output.find('{')
-            end_idx = llm_output.rfind('}') + 1
-            json_str = llm_output[start_idx:end_idx]
-        
-        # Strategy 3: Try to extract any JSON-like structure
-        else:
-            import re
-            # Look for patterns like {"id": 0, "relevance_score": 95}
-            json_pattern = r'\[.*?\]|\{.*?\}'
-            matches = re.findall(json_pattern, llm_output, re.DOTALL)
-            if matches:
-                json_str = matches[0]
-        
         if json_str:
-            print(f"🔍 Extracted JSON: {json_str[:100]}...")
             ranking_data = json.loads(json_str)
             
-            # Handle both array and object formats
-            if isinstance(ranking_data, dict) and 'results' in ranking_data:
-                ranking_data = ranking_data['results']
-            elif not isinstance(ranking_data, list):
-                raise ValueError(f"Unexpected JSON format: {type(ranking_data)}")
-            
-            # Build ranked results
+            # Build ranked results with method selection
             ranked_results = []
+            used_ids = set()
+            
             for item in ranking_data:
                 result_id = item.get('id')
                 relevance_score = item.get('relevance_score', 0)
+                suggested_method = item.get('method', 'beautifulsoup')
                 reason = item.get('reason', '')
                 
-                if 0 <= result_id < len(original_results):
+                if 0 <= result_id < len(original_results) and result_id not in used_ids:
                     result = original_results[result_id].copy()
                     result['relevance_score'] = relevance_score
-                    result['ranking_reason'] = reason
+                    result['suggested_method'] = suggested_method
+                    result['method_reason'] = reason
+                    ranked_results.append(result)
+                    used_ids.add(result_id)
+            
+            # Add missing URLs with default method
+            for i, original_result in enumerate(original_results):
+                if i not in used_ids:
+                    result = original_result.copy()
+                    result['relevance_score'] = 10
+                    result['suggested_method'] = 'beautifulsoup'  # Default fallback
+                    result['method_reason'] = "Fallback - LLM didn't suggest method"
                     ranked_results.append(result)
             
+            # Sort by relevance score
+            ranked_results.sort(key=lambda x: x.get('relevance_score', 0), reverse=True)
+            
+            # Log method distribution
+            method_count = {}
+            for result in ranked_results:
+                method = result.get('suggested_method', 'unknown')
+                method_count[method] = method_count.get(method, 0) + 1
+            
+            print(f"🎯 SMART Method Distribution: {method_count}")
+            
             return ranked_results
+        
         else:
             raise ValueError("No valid JSON found in LLM response")
             
     except Exception as e:
-        print(f"❌ Error parsing LLM ranking: {e}")
-        print(f"❌ Full LLM output: {llm_output}")
-        return simple_rank_urls(original_results, "", len(original_results))
+        print(f"❌ Error parsing SMART LLM ranking: {e}")
+        return simple_rank_urls_with_methods(original_results, "", len(original_results))
 
-def simple_rank_urls(search_results, user_query, required_count):
+def simple_rank_urls_with_methods(search_results, user_query, total_count):
     """
-    Simple fallback ranking when LLM is not available
-    Based on title and snippet relevance
+    Simple fallback ranking with basic method selection
     """
-    print("📊 Using simple ranking algorithm")
+    print(f"📊 Simple ranking with method selection for {len(search_results)} URLs")
     
-    query_words = user_query.lower().split()
+    query_words = user_query.lower().split() if user_query else []
     
-    # Score each result
     for result in search_results:
+        # Simple relevance scoring
         score = 0
         title = result.get('title', '').lower()
         snippet = result.get('snippet', '').lower()
+        url = result.get('url', '').lower()
         
-        # Score based on query word matches
         for word in query_words:
             if word in title:
-                score += 10  # Title matches are worth more
+                score += 10
             if word in snippet:
-                score += 5   # Snippet matches
+                score += 5
         
-        # Bonus for shorter, cleaner titles
-        if result.get('title', ''):
-            if len(result['title']) < 100:
-                score += 2
+        # Simple method selection based on URL patterns
+        suggested_method = determine_simple_method(result.get('url', ''))
         
         result['relevance_score'] = score
-        result['ranking_reason'] = f"Simple scoring: {score} points"
+        result['suggested_method'] = suggested_method
+        result['method_reason'] = f"Simple pattern matching for {suggested_method}"
     
     # Sort by score
     ranked = sorted(search_results, key=lambda x: x.get('relevance_score', 0), reverse=True)
     
-    print(f"📊 Simple ranking completed for {len(ranked)} URLs")
-    return ranked[:required_count]
+    # Log method distribution
+    method_count = {}
+    for result in ranked:
+        method = result.get('suggested_method', 'unknown')
+        method_count[method] = method_count.get(method, 0) + 1
+    
+    print(f"📊 Simple Method Distribution: {method_count}")
+    
+    return ranked
+
+def determine_simple_method(url):
+    """
+    Simple method determination based on URL patterns
+    """
+    url_lower = url.lower()
+    
+    # Playwright sites (JavaScript-heavy)
+    js_sites = [
+        'twitter.com', 'x.com', 'facebook.com', 'instagram.com',
+        'youtube.com', 'tiktok.com', 'linkedin.com'
+    ]
+    
+    if any(site in url_lower for site in js_sites):
+        return 'playwright'
+    
+    # Crawl4AI sites (complex but not JS-heavy)
+    complex_sites = [
+        'amazon.com', 'ebay.com', 'cnn.com', 'bbc.com',
+        'medium.com', 'reddit.com', 'github.com'
+    ]
+    
+    if any(site in url_lower for site in complex_sites):
+        return 'crawl4ai'
+    
+    # Default to BeautifulSoup
+    return 'beautifulsoup'
+
+# Backward compatibility
+async def rank_urls_with_llm(search_results, user_query, required_count=5):
+    """Backward compatibility wrapper"""
+    return await rank_urls_with_method_selection(search_results, user_query, required_count)
+
+def simple_rank_urls(search_results, user_query, total_count):
+    """Backward compatibility wrapper"""
+    return simple_rank_urls_with_methods(search_results, user_query, total_count)
 
 def print_ranking_results(ranked_results):
-    """
-    Print the ranking results in a readable format
-    """
-    print(f"\n🏆 Top {len(ranked_results)} Ranked URLs:")
+    """Print ranking results with method suggestions"""
+    print(f"\n🏆 Top {len(ranked_results)} Ranked URLs with Methods:")
     for i, result in enumerate(ranked_results, 1):
-        print(f"   {i}. [{result.get('relevance_score', 0)}] {result.get('title', 'No title')}")
-        print(f"      URL: {result.get('url', '')}")
-        print(f"      Reason: {result.get('ranking_reason', 'No reason')}")
-        print()
+        method = result.get('suggested_method', 'unknown')
+        score = result.get('relevance_score', 0)
+        print(f" {i}. [{score}] {method.upper()}: {result.get('title', 'No title')}")
+        print(f"    URL: {result.get('url', '')}")
+        print(f"    Reason: {result.get('method_reason', 'No reason')}")
+    print()
