@@ -16,7 +16,7 @@ GROQ_API_KEY = os.getenv('GROQ_API_KEY', '')
 
 # URL Multiplier settings  
 URL_MULTIPLIER_OPTIONS = [5, 10]  # Either 5x or 10x more URLs than requested
-DEFAULT_URL_MULTIPLIER = 10       # FIXED: Default to 10x for better fallback
+DEFAULT_URL_MULTIPLIER = 4       # FIXED: Default to 10x for better fallback
 
 # FIXED: Search engine - DuckDuckGo only
 SEARCH_ENGINES = ['duckduckgo']   # Simplified

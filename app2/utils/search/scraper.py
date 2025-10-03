@@ -11,6 +11,7 @@ import requests
 import time
 import random
 import asyncio
+import logging
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 import sys
@@ -23,14 +24,17 @@ from .llm_ranker import rank_urls_with_method_selection
 from .hardware_monitor import get_simple_hardware_info, get_optimal_parallel_count
 from .crawl4ai_scraper import scrape_with_crawl4ai, warmup_crawl4ai, shutdown_crawl4ai, CRAWL4AI_AVAILABLE
 
+# Setup logging
+logger = logging.getLogger(__name__)
+
 # FIXED: Proper Playwright detection
 try:
     from playwright.async_api import async_playwright
     PLAYWRIGHT_AVAILABLE = True
-    print("✅ Playwright detected and available!")
+    logger.info("✅ Playwright detected and available!")  # ONLY THIS CHANGED
 except ImportError:
     PLAYWRIGHT_AVAILABLE = False
-    print("❌ Playwright not installed")
+    logger.warning("❌ Playwright not installed")  # ONLY THIS CHANGED
 
 # Global initialization flag
 _system_warmed_up = False
@@ -60,11 +64,11 @@ async def ensure_system_warmup():
     global _system_warmed_up
     if _system_warmed_up:
         return True
-    print("🔥 Pre-warming ULTRA-PARALLEL scraping system...")
+    logger.info("🔥 Pre-warming ULTRA-PARALLEL scraping system...")  # ONLY THIS CHANGED
     # Pre-warm Crawl4AI for instant access
     crawl4ai_ready = await warmup_crawl4ai()
     _system_warmed_up = True
-    print("✅ ULTRA-PARALLEL system ready!")
+    logger.info("✅ ULTRA-PARALLEL system ready!")  # ONLY THIS CHANGED
     return True
 
 def assess_content_quality(content, url, title=""):
@@ -213,19 +217,19 @@ async def ultra_parallel_url_processor(url_data, url_index, results_collector):
     url = url_data['url']
     suggested_method = url_data.get('suggested_method', 'beautifulsoup')
     
-    print(f"⚡ [{url_index}] ULTRA-PARALLEL: {url}")
-    print(f"🎯 [{url_index}] LLM suggested: {suggested_method.upper()}")
+    logger.debug(f"⚡ [{url_index}] ULTRA-PARALLEL: {url}")  # ONLY THIS CHANGED
+    logger.debug(f"🎯 [{url_index}] LLM suggested: {suggested_method.upper()}")  # ONLY THIS CHANGED
     
     # Create parallel tasks based on suggested method
     tasks = {}
     
     if suggested_method == 'playwright':
         # ONLY Playwright (as you requested)
-        print(f"🎭 [{url_index}] SINGLE METHOD: Playwright ONLY")
+        logger.debug(f"🎭 [{url_index}] SINGLE METHOD: Playwright ONLY")  # ONLY THIS CHANGED
         tasks['Playwright'] = asyncio.create_task(ultra_scrape_playwright(url))
     else:
         # Suggested method + Playwright parallel
-        print(f"🚀 [{url_index}] DUAL PARALLEL: {suggested_method.upper()} + Playwright")
+        logger.debug(f"🚀 [{url_index}] DUAL PARALLEL: {suggested_method.upper()} + Playwright")  # ONLY THIS CHANGED
         
         if suggested_method == 'beautifulsoup':
             tasks['BeautifulSoup'] = asyncio.create_task(ultra_scrape_beautifulsoup(url))
@@ -269,7 +273,7 @@ async def ultra_parallel_url_processor(url_data, url_index, results_collector):
                                     **url_data
                                 })
                                 
-                                print(f"✅ [{url_index}] SUCCESS: {method_name} delivered {quality_tier} ({quality_score}/100)")
+                                logger.info(f"✅ [{url_index}] SUCCESS: {method_name} delivered {quality_tier} ({quality_score}/100)")  # ONLY THIS CHANGED
                                 
                                 # Cancel remaining tasks
                                 for p in pending:
@@ -277,14 +281,14 @@ async def ultra_parallel_url_processor(url_data, url_index, results_collector):
                                 
                                 return result
                             else:
-                                print(f"⚠️ [{url_index}] POOR quality from {method_name}: {quality_tier}")
+                                logger.debug(f"⚠️ [{url_index}] POOR quality from {method_name}: {quality_tier}")  # ONLY THIS CHANGED
                         
                         # Remove completed task
                         if method_name in tasks:
                             del tasks[method_name]
                             
                     except Exception as e:
-                        print(f"❌ [{url_index}] {method_name} error: {e}")
+                        logger.debug(f"❌ [{url_index}] {method_name} error: {e}")  # ONLY THIS CHANGED
                         if method_name in tasks:
                             del tasks[method_name]
             
@@ -293,24 +297,24 @@ async def ultra_parallel_url_processor(url_data, url_index, results_collector):
                 break
                 
     except asyncio.TimeoutError:
-        print(f"⏰ [{url_index}] TIMEOUT - All methods failed")
+        logger.warning(f"⏰ [{url_index}] TIMEOUT - All methods failed")  # ONLY THIS CHANGED
         # Cancel pending tasks
         for task in tasks.values():
             if not task.done():
                 task.cancel()
     
-    print(f"💥 [{url_index}] ALL METHODS FAILED")
+    logger.warning(f"💥 [{url_index}] ALL METHODS FAILED")  # ONLY THIS CHANGED
     return None
 
 async def search_and_scrape_complete(query, required_results=5, url_multiplier=10):
     """
     🚀 FIXED: ULTRA-PARALLEL ARCHITECTURE - Guarantees exactly 5 results
     """
-    print(f"🚀 ULTRA-PARALLEL PROCESSING - FIXED!")
-    print(f"📝 Query: '{query}'")
-    print(f"🎯 Required Results: {required_results}")
-    print(f"📊 URL Multiplier: {url_multiplier}x")
-    print(f"🎭 Playwright Available: {PLAYWRIGHT_AVAILABLE}")
+    logger.info(f"🚀 ULTRA-PARALLEL PROCESSING - FIXED!")  # ONLY THIS CHANGED
+    logger.info(f"📝 Query: '{query}'")  # ONLY THIS CHANGED
+    logger.info(f"🎯 Required Results: {required_results}")  # ONLY THIS CHANGED
+    logger.info(f"📊 URL Multiplier: {url_multiplier}x")  # ONLY THIS CHANGED
+    logger.info(f"🎭 Playwright Available: {PLAYWRIGHT_AVAILABLE}")  # ONLY THIS CHANGED
     
     # Ensure system is warmed up
     await ensure_system_warmup()
@@ -318,23 +322,23 @@ async def search_and_scrape_complete(query, required_results=5, url_multiplier=1
     # Step 1: Search with DuckDuckGo
     search_results = await search_web_enhanced(query, required_results, url_multiplier)
     if not search_results:
-        print("❌ No search results found")
+        logger.error("❌ No search results found")  # ONLY THIS CHANGED
         return []
-    print(f"✅ Search completed: {len(search_results)} URLs found")
+    logger.info(f"✅ Search completed: {len(search_results)} URLs found")  # ONLY THIS CHANGED
     
     # Step 2: LLM Ranking + Method Selection
-    print(f"🧠 LLM: Ranking URLs + method selection...")
+    logger.info(f"🧠 LLM: Ranking URLs + method selection...")  # ONLY THIS CHANGED
     ranked_results = await rank_urls_with_method_selection(search_results, query, required_results)
     if not ranked_results:
-        print("❌ LLM ranking failed")
+        logger.error("❌ LLM ranking failed")  # ONLY THIS CHANGED
         return []
-    print(f"✅ LLM completed: {len(ranked_results)} URLs ranked with methods")
+    logger.info(f"✅ LLM completed: {len(ranked_results)} URLs ranked with methods")  # ONLY THIS CHANGED
     
     # Step 3: FIXED - Process URLs until we get exactly required_results
-    print(f"\n🚀 FIXED ULTRA-PARALLEL ARCHITECTURE:")
-    print(f" 🎯 GUARANTEE: Will get exactly {required_results} results")
-    print(f" 📦 Available URLs: {len(ranked_results)}")
-    print(f" ⚡ Strategy: Process until target reached")
+    logger.info(f"\n🚀 FIXED ULTRA-PARALLEL ARCHITECTURE:")  # ONLY THIS CHANGED
+    logger.info(f" 🎯 GUARANTEE: Will get exactly {required_results} results")  # ONLY THIS CHANGED
+    logger.info(f" 📦 Available URLs: {len(ranked_results)}")  # ONLY THIS CHANGED
+    logger.info(f" ⚡ Strategy: Process until target reached")  # ONLY THIS CHANGED
     
     start_time = time.time()
     final_results = []
@@ -352,7 +356,7 @@ async def search_and_scrape_complete(query, required_results=5, url_multiplier=1
         
         batch_urls = ranked_results[start_idx:end_idx]
         
-        print(f"\n🔥 BATCH {len(final_results)+1}: Processing {len(batch_urls)} URLs (need {remaining_needed} more results)")
+        logger.info(f"\n🔥 BATCH {len(final_results)+1}: Processing {len(batch_urls)} URLs (need {remaining_needed} more results)")  # ONLY THIS CHANGED
         
         # Process batch in parallel
         batch_tasks = []
@@ -369,7 +373,7 @@ async def search_and_scrape_complete(query, required_results=5, url_multiplier=1
         for result in batch_results:
             if result and isinstance(result, dict) and result.get('success'):
                 final_results.append(result)
-                print(f"📊 COLLECTED: {len(final_results)}/{required_results} results")
+                logger.info(f"📊 COLLECTED: {len(final_results)}/{required_results} results")  # ONLY THIS CHANGED
                 
                 # Stop if we have enough
                 if len(final_results) >= required_results:
@@ -391,12 +395,12 @@ async def search_and_scrape_complete(query, required_results=5, url_multiplier=1
         method = result.get('method', 'Unknown')
         method_stats[method] = method_stats.get(method, 0) + 1
     
-    print(f"\n📊 FIXED ULTRA-PARALLEL RESULTS:")
-    print(f" 🏆 SUCCESS: {len(final_results)}/{required_results} (EXACTLY as requested!)")
-    print(f" ⚡ Duration: {duration:.2f} seconds")
-    print(f" 🎭 Playwright Status: {'✅ Working' if PLAYWRIGHT_AVAILABLE else '❌ Not Available'}")
-    print(f" ⚡ Winning Methods: {method_stats}")
-    print(f" 🚀 FIXED: Guaranteed exactly {required_results} results!")
+    logger.info(f"\n📊 FIXED ULTRA-PARALLEL RESULTS:")  # ONLY THIS CHANGED
+    logger.info(f" 🏆 SUCCESS: {len(final_results)}/{required_results} (EXACTLY as requested!)")  # ONLY THIS CHANGED
+    logger.info(f" ⚡ Duration: {duration:.2f} seconds")  # ONLY THIS CHANGED
+    logger.info(f" 🎭 Playwright Status: {'✅ Working' if PLAYWRIGHT_AVAILABLE else '❌ Not Available'}")  # ONLY THIS CHANGED
+    logger.info(f" ⚡ Winning Methods: {method_stats}")  # ONLY THIS CHANGED
+    logger.info(f" 🚀 FIXED: Guaranteed exactly {required_results} results!")  # ONLY THIS CHANGED
     
     # Cleanup
     try:
