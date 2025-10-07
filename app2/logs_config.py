@@ -38,7 +38,7 @@ def suppress_all_spam():
     """Nuclear option: Suppress ALL third-party error spam"""
     
     # 1. Suppress asyncio errors (Playwright subprocess spam)
-    def silent_exception_handler(loop, context):
+    def silent_exception_handler(loop, context): 
         """Silent handler for asyncio errors"""
         exception = context.get('exception')
         if exception:

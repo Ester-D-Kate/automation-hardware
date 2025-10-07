@@ -20,7 +20,7 @@ import json
 import os
 
 from .search_engine import search_web_enhanced
-from .llm_ranker import rank_urls_with_method_selection
+from .llm_ranker import rank_urls_with_enhanced_query
 from .hardware_monitor import get_simple_hardware_info, get_optimal_parallel_count
 from .crawl4ai_scraper import scrape_with_crawl4ai, warmup_crawl4ai, shutdown_crawl4ai, CRAWL4AI_AVAILABLE
 
@@ -308,13 +308,13 @@ async def ultra_parallel_url_processor(url_data, url_index, results_collector):
 
 async def search_and_scrape_complete(query, required_results=5, url_multiplier=10):
     """
-    🚀 FIXED: ULTRA-PARALLEL ARCHITECTURE - Guarantees exactly 5 results
+    🚀 ENHANCED: ULTRA-PARALLEL ARCHITECTURE with Enhanced Query Generation
     """
-    logger.info(f"🚀 ULTRA-PARALLEL PROCESSING - FIXED!")  # ONLY THIS CHANGED
-    logger.info(f"📝 Query: '{query}'")  # ONLY THIS CHANGED
-    logger.info(f"🎯 Required Results: {required_results}")  # ONLY THIS CHANGED
-    logger.info(f"📊 URL Multiplier: {url_multiplier}x")  # ONLY THIS CHANGED
-    logger.info(f"🎭 Playwright Available: {PLAYWRIGHT_AVAILABLE}")  # ONLY THIS CHANGED
+    logger.info(f"🚀 ULTRA-PARALLEL PROCESSING - ENHANCED!")
+    logger.info(f"📝 Query: '{query}'")
+    logger.info(f"🎯 Required Results: {required_results}")
+    logger.info(f"📊 URL Multiplier: {url_multiplier}x")
+    logger.info(f"🎭 Playwright Available: {PLAYWRIGHT_AVAILABLE}")
     
     # Ensure system is warmed up
     await ensure_system_warmup()
@@ -322,18 +322,19 @@ async def search_and_scrape_complete(query, required_results=5, url_multiplier=1
     # Step 1: Search with DuckDuckGo
     search_results = await search_web_enhanced(query, required_results, url_multiplier)
     if not search_results:
-        logger.error("❌ No search results found")  # ONLY THIS CHANGED
+        logger.error("❌ No search results found")
         return []
-    logger.info(f"✅ Search completed: {len(search_results)} URLs found")  # ONLY THIS CHANGED
+    logger.info(f"✅ Search completed: {len(search_results)} URLs found")
     
-    # Step 2: LLM Ranking + Method Selection
-    logger.info(f"🧠 LLM: Ranking URLs + method selection...")  # ONLY THIS CHANGED
-    ranked_results = await rank_urls_with_method_selection(search_results, query, required_results)
+    # Step 2: ENHANCED - LLM Ranking + Method Selection + Query Enhancement in ONE CALL
+    logger.info(f"🧠 ENHANCED LLM: Ranking URLs + method selection + query enhancement...")
+    ranked_results, enhanced_query = await rank_urls_with_enhanced_query(search_results, query, required_results)
     if not ranked_results:
-        logger.error("❌ LLM ranking failed")  # ONLY THIS CHANGED
+        logger.error("❌ Enhanced LLM ranking failed")
         return []
-    logger.info(f"✅ LLM completed: {len(ranked_results)} URLs ranked with methods")  # ONLY THIS CHANGED
-    
+    logger.info(f"✅ Enhanced LLM completed: {len(ranked_results)} URLs ranked with methods")
+    logger.info(f"🎯 Enhanced Query Generated: '{enhanced_query[:80]}...'")
+
     # Step 3: FIXED - Process URLs until we get exactly required_results
     logger.info(f"\n🚀 FIXED ULTRA-PARALLEL ARCHITECTURE:")  # ONLY THIS CHANGED
     logger.info(f" 🎯 GUARANTEE: Will get exactly {required_results} results")  # ONLY THIS CHANGED
@@ -407,8 +408,8 @@ async def search_and_scrape_complete(query, required_results=5, url_multiplier=1
         await shutdown_crawl4ai()
     except:
         pass
-    
-    return final_results
+
+    return final_results, enhanced_query
 
 # Aliases for backward compatibility
 scrape_single_url = ultra_parallel_url_processor

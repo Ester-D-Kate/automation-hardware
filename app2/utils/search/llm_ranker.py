@@ -1,7 +1,7 @@
 """
-Alice LLM URL Ranker & Method Selector - Intelligent URL Ranking System
-Smart URL ranking with scraping method selection using Groq Cloud 70B model.
-Provides relevance scoring and optimal scraping method determination for web content extraction.
+Alice LLM URL Ranker & Enhanced Query Generator - OPTIMIZED VERSION
+Smart URL ranking with scraping method selection AND enhanced query generation in single LLM call.
+Provides relevance scoring, optimal scraping method determination, AND enhanced vector search queries.
 """
 
 import json
@@ -9,15 +9,15 @@ import os
 import time
 import logging
 import asyncio
-from typing import List, Dict, Any, Tuple
+from typing import Dict, List, Any, Tuple
 from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 load_dotenv()
 
-# ==================== GLOBAL CONFIGURATION (CACHED) ====================
+# ==================== GLOBAL CONFIGURATION ====================
 
-# Load API keys once at module level (More Efficient)
+# Load API keys once at module level
 API_KEYS = [
     os.getenv('GROQ_API_KEY'),
     os.getenv('GROQ_API_KEY_ALT_1'), 
@@ -26,21 +26,20 @@ API_KEYS = [
     os.getenv('GROQ_API_KEY_ALT_4')
 ]
 
-# Filter out None/empty keys once
 AVAILABLE_API_KEYS = [key for key in API_KEYS if key and key.strip()]
 
-# LLM Configuration - Ranker priority order
 LLM_RANKER_API_ORDER = [
     'GROQ_API_KEY_ALT_2',
     'GROQ_API_KEY_ALT_3',
     'GROQ_API_KEY_ALT_4',
     'GROQ_API_KEY',         
     'GROQ_API_KEY_ALT_1'
-]  
-LLM_MODEL = "llama-3.3-70b-versatile"          # 70B model for intelligent ranking
-LLM_TEMPERATURE = 0.3                          # Balanced temperature for consistent ranking
-MAX_RANKING_URLS = 100                         # Maximum URLs to process in single batch
-MAX_TOKENS = 3000                              # Token limit for ranking response
+]
+
+LLM_MODEL = "llama-3.3-70b-versatile"
+LLM_TEMPERATURE = 0.3
+MAX_RANKING_URLS = 100
+MAX_TOKENS = 3000
 
 # Scraping Method Categories
 JAVASCRIPT_HEAVY_SITES = [
@@ -53,43 +52,55 @@ COMPLEX_DYNAMIC_SITES = [
     'medium.com', 'reddit.com', 'github.com', 'stackoverflow.com'
 ]
 
-# LLM Ranking Prompt Template - Cached for optimization
-SMART_RANKING_PROMPT_TEMPLATE = """Rank ALL these web search results by relevance to: "{user_query}"
-                                
-                                For EACH URL, determine the BEST scraping method:
-                                **beautifulsoup**: Simple static HTML sites, blogs, news articles, documentation
-                                **crawl4ai**: Complex sites with dynamic content but no heavy JavaScript (e-commerce, modern news sites, academic papers)
-                                **playwright**: JavaScript-heavy sites, SPAs, social media, interactive applications
-                                
-                                Return ALL {total_count} results as JSON array:
-                                [
-                                {{"id": 0, "relevance_score": 95, "method": "beautifulsoup", "reason": "Static blog site, simple HTML structure"}},
-                                {{"id": 2, "relevance_score": 85, "method": "crawl4ai", "reason": "E-commerce site with dynamic content but no heavy JS"}},
-                                {{"id": 1, "relevance_score": 75, "method": "playwright", "reason": "JavaScript-heavy application requiring browser rendering"}},
-                                ... (continue for ALL {total_count} URLs)
-                                ]
-                                
-                                **Analysis Guidelines:**
-                                - **beautifulsoup**: Wikipedia, simple blogs, static documentation, basic news sites
-                                - **crawl4ai**: Amazon, complex news sites, academic journals, modern content sites
-                                - **playwright**: Twitter, Facebook, Instagram, SPAs, sites requiring JavaScript
-                                
-                                Consider:
-                                1. URL domain patterns (github.com, stackoverflow.com, etc.)
-                                2. Site complexity indicators in title/snippet
-                                3. Known site types requiring specific methods
-                                
-                                Search Results:
-                                {url_data}
-                                
-                                Return JSON array with ALL {total_count} URLs ranked by relevance with scraping method suggestions."""
+# COMBINED Ranking + Query Enhancement Prompt Template
+COMBINED_RANKING_ENHANCEMENT_PROMPT = """DUAL TASK: URL Ranking + Enhanced Query Generation
 
-# System Prompt for LLM - Cached
-LLM_SYSTEM_PROMPT = """You are an expert at ranking web search results AND determining the best web scraping method for each URL. You understand when sites need JavaScript rendering (Playwright), advanced extraction (Crawl4AI), or simple parsing (BeautifulSoup)."""
+Original Query: "{user_query}"
+
+TASK 1 - URL RANKING: Rank ALL these web search results by relevance to the query.
+For EACH URL, determine the BEST scraping method:
+**beautifulsoup**: Simple static HTML sites, blogs, news articles, documentation
+**crawl4ai**: Complex sites with dynamic content but no heavy JavaScript (e-commerce, modern news sites)
+**playwright**: JavaScript-heavy sites, SPAs, social media, interactive applications
+
+TASK 2 - ENHANCED QUERY GENERATION: Create an optimized search query for vector similarity matching.
+Transform the original query to include:
+- Synonyms and related terms that would appear in relevant content
+- Domain-specific keywords and professional terminology
+- Technical terms and context that content creators would use
+- Geographic, temporal, or categorical context when relevant
+
+Examples of query enhancement:
+- "weather today" → "weather forecast today current temperature conditions humidity precipitation climate meteorology"
+- "best laptops" → "best laptops 2025 reviews specifications performance benchmarks comparison top rated gaming business ultrabook"
+- "python tutorial" → "python programming tutorial guide learn basics syntax examples code functions variables loops"
+
+Return JSON with TWO sections:
+{{
+    "enhanced_query": "comprehensive enhanced version with domain-specific terms, synonyms, technical vocabulary, and contextual keywords that would appear in high-quality content about this topic",
+    "url_rankings": [
+        {{"id": 0, "relevance_score": 95, "method": "beautifulsoup", "reason": "Static site with simple HTML structure"}},
+        {{"id": 1, "relevance_score": 85, "method": "crawl4ai", "reason": "Dynamic content site with complex structure"}},
+        {{"id": 2, "relevance_score": 75, "method": "playwright", "reason": "JavaScript-heavy application requiring browser rendering"}},
+        ... (continue for ALL {total_count} URLs)
+    ]
+}}
+
+CRITICAL: 
+1. Enhanced query should be 3-5x longer than original with professional vocabulary
+2. Include ALL {total_count} URLs in rankings
+3. Ensure enhanced query includes terms that would appear in authoritative content
+
+Search Results:
+{url_data}
+
+Return ONLY valid JSON starting with {{ and ending with }}"""
+
+# System Prompt
+LLM_SYSTEM_PROMPT = """You are an expert at ranking web search results AND generating enhanced search queries for vector similarity matching. You understand when sites need specific scraping methods and how to optimize queries for semantic search."""
 
 # ==================== DEPENDENCY MANAGEMENT ====================
 
-# Check Groq availability
 try:
     from groq import Groq
     GROQ_AVAILABLE = True
@@ -123,7 +134,6 @@ def get_api_key_by_name(key_name: str) -> str:
 def make_groq_request_with_fallback(messages, model, temperature=0.7, max_tokens=1500, api_key_priority_order=None):
     """Make Groq request with automatic fallback between API keys"""
     
-    # Use default order if not specified
     if api_key_priority_order is None:
         api_key_priority_order = LLM_RANKER_API_ORDER
     
@@ -153,7 +163,6 @@ def make_groq_request_with_fallback(messages, model, temperature=0.7, max_tokens
             logger.warning(f"❌ API key {key_name} failed: {e}")
             last_error = e
             
-            # Check for rate limit errors
             rate_limit_indicators = [
                 'rate limit', 'too many requests', 'quota exceeded', 
                 'tokens exhausted', '429', 'rate_limit_exceeded',
@@ -167,7 +176,6 @@ def make_groq_request_with_fallback(messages, model, temperature=0.7, max_tokens
                 logger.error(f"🔥 Non-rate-limit error on {key_name}: {e}")
                 continue
     
-    # All keys failed
     raise Exception(f"All API keys failed. Last error: {last_error}")
 
 def prepare_url_data_for_ranking(search_results: List[Dict]) -> List[Dict]:
@@ -186,15 +194,12 @@ def determine_simple_method(url: str) -> str:
     """Determine scraping method based on simple URL pattern matching"""
     url_lower = url.lower()
     
-    # Check for JavaScript-heavy sites
     if any(site in url_lower for site in JAVASCRIPT_HEAVY_SITES):
         return 'playwright'
     
-    # Check for complex dynamic sites
     if any(site in url_lower for site in COMPLEX_DYNAMIC_SITES):
         return 'crawl4ai'
     
-    # Default to BeautifulSoup for simple sites
     return 'beautifulsoup'
 
 def calculate_simple_relevance_score(result: Dict, query_words: List[str]) -> int:
@@ -205,11 +210,34 @@ def calculate_simple_relevance_score(result: Dict, query_words: List[str]) -> in
     
     for word in query_words:
         if word in title:
-            score += 10  # Higher weight for title matches
+            score += 10
         if word in snippet:
-            score += 5   # Lower weight for snippet matches
+            score += 5
     
     return score
+
+def _simple_query_enhancement(user_query: str) -> str:
+    """Simple fallback query enhancement using domain templates"""
+    
+    query_lower = user_query.lower()
+    
+    if any(term in query_lower for term in ['weather', 'temperature', 'rain', 'forecast', 'climate']):
+        return f"{user_query} weather forecast temperature conditions humidity wind precipitation climate meteorology today current"
+    
+    elif any(term in query_lower for term in ['laptop', 'computer', 'tech', 'review', 'specifications']):
+        return f"{user_query} specifications performance reviews comparison features price 2025 technology hardware"
+    
+    elif any(term in query_lower for term in ['python', 'programming', 'code', 'tutorial', 'learn']):
+        return f"{user_query} programming tutorial guide code examples syntax documentation functions variables"
+    
+    elif any(term in query_lower for term in ['recipe', 'cooking', 'food', 'ingredients']):
+        return f"{user_query} recipe ingredients cooking instructions preparation method cuisine food"
+    
+    elif any(term in query_lower for term in ['news', 'latest', 'today', 'current']):
+        return f"{user_query} news latest updates current events today breaking recent"
+    
+    else:
+        return f"{user_query} information details guide overview analysis explanation"
 
 def log_method_distribution(results: List[Dict]) -> None:
     """Log distribution of scraping methods for monitoring"""
@@ -220,73 +248,68 @@ def log_method_distribution(results: List[Dict]) -> None:
     
     print(f"🎯 Method Distribution: {method_count}")
 
-# ==================== MAIN RANKING FUNCTION ====================
+# ==================== MAIN COMBINED RANKING + ENHANCEMENT FUNCTION ====================
 
-async def rank_urls_with_method_selection(search_results: List[Dict], 
-                                          user_query: str, 
-                                          required_count: int = 5) -> List[Dict]:
+async def rank_urls_with_enhanced_query(search_results: List[Dict], 
+                                       user_query: str, 
+                                       required_count: int = 5) -> Tuple[List[Dict], str]:
     """
-    MAIN INTELLIGENT URL RANKING FUNCTION with robust error handling
-    
-    Smart LLM-powered URL ranking with scraping method selection.
-    Ranks URLs by relevance and suggests optimal scraping method for each.
+    MAIN FUNCTION: Get URL rankings AND enhanced query in single LLM call
     
     Args:
         search_results: List of search result dictionaries
         user_query: User's search query for relevance analysis
-        required_count: Number of top results needed (not used, ranks all)
+        required_count: Number of top results needed
         
     Returns:
-        List of ranked URLs with suggested scraping methods and reasoning
+        Tuple[List[Dict], str]: (ranked_urls, enhanced_query)
     """
     
     if not search_results:
         logger.warning("No search results provided")
-        return []
+        return [], user_query
     
-    # Check system availability
     if not check_groq_availability():
-        print("⚠️ LLM ranking not available, using simple ranking")
-        return simple_rank_urls_with_methods(search_results, user_query, len(search_results))
+        print("⚠️ LLM ranking not available, using simple ranking + enhancement")
+        ranked_urls = simple_rank_urls_with_methods(search_results, user_query, len(search_results))
+        enhanced_query = _simple_query_enhancement(user_query)
+        return ranked_urls, enhanced_query
     
-    print(f"🧠 SMART LLM: Ranking {len(search_results)} URLs + Method Selection")
+    print(f"🧠 COMBINED LLM: Ranking {len(search_results)} URLs + Enhanced Query Generation")
     print(f"🎯 Query: '{user_query}'")
     print(f"🔑 Available API keys: {len(AVAILABLE_API_KEYS)}")
     
-    # Limit URLs to process
     urls_to_rank = search_results[:MAX_RANKING_URLS]
     
     try:
-        # Generate intelligent ranking
-        ranked_results = await _generate_intelligent_ranking(urls_to_rank, user_query)
+        ranked_results, enhanced_query = await _generate_combined_ranking_and_query(urls_to_rank, user_query)
         
-        print(f"✅ SMART LLM completed: {len(ranked_results)} URLs ranked with methods")
+        print(f"✅ COMBINED LLM completed: {len(ranked_results)} URLs ranked + query enhanced")
+        print(f"🎯 Enhanced Query: '{enhanced_query}'")
         log_method_distribution(ranked_results)
         
-        return ranked_results
+        return ranked_results, enhanced_query
         
     except Exception as e:
-        print(f"❌ LLM ranking failed: {e}")
-        print("🔄 Falling back to simple ranking")
-        return simple_rank_urls_with_methods(search_results, user_query, len(search_results))
+        print(f"❌ Combined LLM ranking failed: {e}")
+        print("🔄 Falling back to simple ranking + enhancement")
+        ranked_urls = simple_rank_urls_with_methods(search_results, user_query, len(search_results))
+        enhanced_query = _simple_query_enhancement(user_query)
+        return ranked_urls, enhanced_query
 
-# ==================== INTELLIGENT RANKING ENGINE ====================
-
-async def _generate_intelligent_ranking(search_results: List[Dict], user_query: str) -> List[Dict]:
-    """Generate intelligent ranking using LLM analysis with better error handling"""
+async def _generate_combined_ranking_and_query(search_results: List[Dict], user_query: str) -> Tuple[List[Dict], str]:
+    """Generate URL rankings and enhanced query in single LLM call"""
     
     try:
-        # Prepare data for LLM analysis
         url_data = prepare_url_data_for_ranking(search_results)
-        ranking_prompt = _build_ranking_prompt(user_query, url_data)
+        combined_prompt = _build_combined_ranking_prompt(user_query, url_data)
         
-        print("🤖 Asking LLM to rank URLs + suggest scraping methods...")
+        print("🤖 Asking LLM for URL rankings + enhanced query...")
         
-        # Call LLM for intelligent analysis
         response = make_groq_request_with_fallback(
             messages=[
                 {"role": "system", "content": LLM_SYSTEM_PROMPT},
-                {"role": "user", "content": ranking_prompt}
+                {"role": "user", "content": combined_prompt}
             ],
             model=LLM_MODEL,
             temperature=LLM_TEMPERATURE,
@@ -294,74 +317,73 @@ async def _generate_intelligent_ranking(search_results: List[Dict], user_query: 
             api_key_priority_order=LLM_RANKER_API_ORDER
         )
         
-        # Parse and process LLM response
         llm_output = response.choices[0].message.content.strip()
-        ranked_results = _parse_intelligent_ranking(llm_output, search_results)
+        ranked_results, enhanced_query = _parse_combined_response(llm_output, search_results, user_query)
         
-        return ranked_results
+        return ranked_results, enhanced_query
         
     except Exception as e:
-        logger.error(f"Intelligent ranking failed: {e}")
-        raise e  # Re-raise to trigger fallback in main function
+        logger.error(f"Combined ranking and query enhancement failed: {e}")
+        raise e
 
-def _build_ranking_prompt(user_query: str, url_data: List[Dict]) -> str:
-    """Build comprehensive ranking prompt for LLM"""
+def _build_combined_ranking_prompt(user_query: str, url_data: List[Dict]) -> str:
+    """Build combined prompt for URL ranking + query enhancement"""
     
-    # Format URL data for prompt
     url_data_formatted = ""
     for item in url_data:
         url_data_formatted += f"""
-                               ID: {item['id']}
-                               Title: {item['title']}
-                               URL: {item['url']}
-                               Snippet: {item['snippet']}
-                               ---
-                               """
+        ID: {item['id']}
+        Title: {item['title']}
+        URL: {item['url']}
+        Snippet: {item['snippet']}
+        ---
+        """
     
-    # Build complete prompt
-    return SMART_RANKING_PROMPT_TEMPLATE.format(
+    return COMBINED_RANKING_ENHANCEMENT_PROMPT.format(
         user_query=user_query,
         total_count=len(url_data),
         url_data=url_data_formatted
     )
 
-def _parse_intelligent_ranking(llm_output: str, original_results: List[Dict]) -> List[Dict]:
-    """Parse LLM ranking response and create structured results"""
+def _parse_combined_response(llm_output: str, original_results: List[Dict], user_query: str) -> Tuple[List[Dict], str]:
+    """Parse combined LLM response for both rankings and enhanced query"""
     
     try:
-        print(f"🔍 Parsing SMART LLM output...")
+        print("🔍 Parsing combined LLM output...")
         
-        # Extract JSON from LLM response
-        json_str = _extract_json_from_response(llm_output)
-        if not json_str:
-            raise ValueError("No valid JSON found in LLM response")
+        # Extract JSON from response
+        json_start = llm_output.find('{')
+        json_end = llm_output.rfind('}') + 1
         
-        ranking_data = json.loads(json_str)
-        
-        # Build ranked results with method selection
-        ranked_results = _build_ranked_results(ranking_data, original_results)
-        
-        # Ensure all URLs are included and properly sorted
-        ranked_results = _finalize_ranking(ranked_results, original_results)
-        
-        return ranked_results
-        
+        if json_start >= 0 and json_end > json_start:
+            json_str = llm_output[json_start:json_end]
+            combined_data = json.loads(json_str)
+            
+            enhanced_query = combined_data.get('enhanced_query', user_query)
+            url_rankings = combined_data.get('url_rankings', [])
+            
+            if not enhanced_query or len(enhanced_query.strip()) < 10:
+                logger.warning("⚠️ Enhanced query too short, using fallback")
+                enhanced_query = _simple_query_enhancement(user_query)
+            
+            # Build ranked results
+            ranked_results = _build_ranked_results_from_combined(url_rankings, original_results)
+            
+            # Ensure all URLs are included
+            ranked_results = _finalize_combined_ranking(ranked_results, original_results)
+            
+            return ranked_results, enhanced_query
+        else:
+            raise ValueError("No valid JSON found in response")
+            
     except Exception as e:
-        print(f"❌ Error parsing SMART LLM ranking: {e}")
-        return simple_rank_urls_with_methods(original_results, "", len(original_results))
+        print(f"❌ Error parsing combined response: {e}")
+        ranked_results = simple_rank_urls_with_methods(original_results, user_query, len(original_results))
+        enhanced_query = _simple_query_enhancement(user_query)
+        return ranked_results, enhanced_query
 
-def _extract_json_from_response(llm_output: str) -> str:
-    """Extract JSON array from LLM response text"""
-    start_idx = llm_output.find('[')
-    end_idx = llm_output.rfind(']') + 1
-    
-    if start_idx >= 0 and end_idx > start_idx:
-        return llm_output[start_idx:end_idx]
-    
-    return None
-
-def _build_ranked_results(ranking_data: List[Dict], original_results: List[Dict]) -> List[Dict]:
-    """Build ranked results from LLM analysis data"""
+def _build_ranked_results_from_combined(ranking_data: List[Dict], original_results: List[Dict]) -> List[Dict]:
+    """Build ranked results from combined LLM analysis data"""
     
     ranked_results = []
     used_ids = set()
@@ -382,10 +404,9 @@ def _build_ranked_results(ranking_data: List[Dict], original_results: List[Dict]
     
     return ranked_results, used_ids
 
-def _finalize_ranking(ranked_results: List[Dict], original_results: List[Dict]) -> List[Dict]:
+def _finalize_combined_ranking(ranked_results: List[Dict], original_results: List[Dict]) -> List[Dict]:
     """Finalize ranking by adding missing URLs and sorting"""
     
-    # Get used IDs from previous processing
     if isinstance(ranked_results, tuple):
         ranked_results, used_ids = ranked_results
     else:
@@ -395,62 +416,35 @@ def _finalize_ranking(ranked_results: List[Dict], original_results: List[Dict]) 
     for i, original_result in enumerate(original_results):
         if i not in used_ids:
             result = original_result.copy()
-            result['relevance_score'] = 10  # Low default score
+            result['relevance_score'] = 10
             result['suggested_method'] = 'beautifulsoup'
             result['method_reason'] = "Fallback - LLM didn't suggest method"
             ranked_results.append(result)
     
-    # Sort by relevance score (highest first)
+    # Sort by relevance score
     ranked_results.sort(key=lambda x: x.get('relevance_score', 0), reverse=True)
     
     return ranked_results
 
-# ==================== SIMPLE FALLBACK RANKING ====================
-
 def simple_rank_urls_with_methods(search_results: List[Dict], 
                                   user_query: str, 
                                   total_count: int) -> List[Dict]:
-    """
-    Simple fallback ranking system with basic method selection
-    
-    Used when LLM ranking is unavailable or fails.
-    Provides basic relevance scoring and pattern-based method selection.
-    
-    Args:
-        search_results: List of search result dictionaries
-        user_query: User's search query for relevance scoring
-        total_count: Total number of results to process
-        
-    Returns:
-        List of ranked URLs with basic method suggestions
-    """
+    """Simple fallback ranking system with basic method selection"""
     
     print(f"📊 Simple ranking with method selection for {len(search_results)} URLs")
     
-    # Prepare query words for scoring
     query_words = user_query.lower().split() if user_query else []
     
-    # Process each result
     for result in search_results:
-        # Calculate simple relevance score
         score = calculate_simple_relevance_score(result, query_words)
-        
-        # Determine scraping method using simple patterns
         suggested_method = determine_simple_method(result.get('url', ''))
         
-        # Add ranking metadata
         result['relevance_score'] = score
         result['suggested_method'] = suggested_method
         result['method_reason'] = f"Simple pattern matching for {suggested_method}"
     
-    # Sort by relevance score
-    ranked_results = sorted(
-        search_results, 
-        key=lambda x: x.get('relevance_score', 0), 
-        reverse=True
-    )
+    ranked_results = sorted(search_results, key=lambda x: x.get('relevance_score', 0), reverse=True)
     
-    # Log results
     print(f"📊 Simple ranking completed for {len(ranked_results)} URLs")
     log_method_distribution(ranked_results)
     
@@ -458,32 +452,45 @@ def simple_rank_urls_with_methods(search_results: List[Dict],
 
 # ==================== CONVENIENCE FUNCTIONS ====================
 
-async def rank_urls(search_results: List[Dict], 
-                    user_query: str, 
-                    count: int = 5) -> List[Dict]:
-    """
-    Convenience function for URL ranking (backward compatibility)
+# Backward compatibility - old function name
+async def rank_urls_with_method_selection(search_results: List[Dict], 
+                                         user_query: str, 
+                                         required_count: int = 5) -> List[Dict]:
+    """Backward compatibility function - returns only URLs"""
+    ranked_urls, enhanced_query = await rank_urls_with_enhanced_query(search_results, user_query, required_count)
+    return ranked_urls
+
+# Enhanced Query Generation (standalone function for backward compatibility)
+async def enhance_query_for_vector_search(user_query: str, scraped_data_context: List[Dict] = None) -> str:
+    """Generate enhanced search query for vector database retrieval"""
     
-    Args:
-        search_results: Search results to rank
-        user_query: Query for relevance analysis
-        count: Number of results needed
+    if not check_groq_availability():
+        logger.warning("⚠️ LLM not available for query enhancement, using simple enhancement")
+        return _simple_query_enhancement(user_query)
+    
+    # If we have context, we can create a minimal search result for combined processing
+    if scraped_data_context:
+        mock_search_results = [
+            {
+                'title': result.get('title', ''),
+                'url': result.get('url', ''), 
+                'snippet': result.get('content', '')[:200] if result.get('content') else ''
+            }
+            for result in scraped_data_context[:5]
+        ]
         
-    Returns:
-        Ranked list of URLs with method suggestions
-    """
-    return await rank_urls_with_method_selection(search_results, user_query, count)
+        try:
+            _, enhanced_query = await rank_urls_with_enhanced_query(mock_search_results, user_query, 5)
+            return enhanced_query
+        except Exception as e:
+            logger.error(f"❌ Enhanced query generation failed: {e}")
+            return _simple_query_enhancement(user_query)
+    else:
+        # Fallback to simple enhancement
+        return _simple_query_enhancement(user_query)
 
 def get_method_statistics(ranked_results: List[Dict]) -> Dict[str, int]:
-    """
-    Get statistics about method distribution in ranked results
-    
-    Args:
-        ranked_results: List of ranked URLs with method suggestions
-        
-    Returns:
-        Dictionary with method counts
-    """
+    """Get statistics about method distribution in ranked results"""
     method_count = {}
     for result in ranked_results:
         method = result.get('suggested_method', 'unknown')

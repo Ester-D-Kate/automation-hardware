@@ -104,7 +104,6 @@ class UnifiedRequest(BaseModel):
     query: str = Field(..., min_length=2, max_length=500, description="Search query")
     max_results: int = Field(5, ge=1, le=15, description="Maximum number of results")
     url_multiplier: int = Field(4, ge=2, le=10, description="URL multiplier for ranking (2-10x)")
-    
     @validator('query')
     def validate_query(cls, v):
         if not v or not v.strip():
@@ -132,6 +131,9 @@ class SearchResponse(BaseModel):
     total_sources: int = Field(..., description="Number of sources used")
     processing_time_seconds: float = Field(..., description="Processing time")
     url_multiplier_used: int = Field(..., description="URL multiplier used")
+    enhanced_query: str = Field(..., description="LLM-enhanced query used for optimization")
+    query_enhancement_applied: bool = Field(..., description="Whether query enhancement was applied")
+
 
 # ==================== SCRAPER ENDPOINT OUTPUT ====================
 
@@ -160,6 +162,18 @@ class ScraperResponse(BaseModel):
     processing_time_seconds: float = Field(..., description="Processing time")
     url_multiplier_used: int = Field(..., description="URL multiplier used")
 
+class OptimizerResponse(BaseModel):
+    """Vector optimizer response schema"""
+    query: str = Field(..., description="Original search query")
+    enhanced_query: str = Field(..., description="LLM-enhanced query for vector search")  # NEW
+    optimized_data: List[ScrapedData] = Field(..., description="Vector-optimized scraped data")
+    total_original_sources: int = Field(..., description="Number of original sources")
+    total_optimized_sources: int = Field(..., description="Number of optimized sources")
+    optimization_stats: Dict = Field(..., description="Optimization statistics")
+    processing_time_seconds: float = Field(..., description="Processing time")
+    url_multiplier_used: int = Field(..., description="URL multiplier used")
+    query_enhancement_applied: bool = Field(..., description="Whether query enhancement was applied")  # NEW
+    
 # ==================== ENHANCED CONVERSATION SYSTEM ====================
 
 class LLMReport(BaseModel):
