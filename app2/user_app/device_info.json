@@ -1,0 +1,148 @@
+{
+  "timestamp": "L_Drago",
+  "system": {
+    "os": "Windows",
+    "os_version": "10.0.26100",
+    "os_release": "10",
+    "machine": "AMD64",
+    "processor": "Intel64 Family 6 Model 142 Stepping 10, GenuineIntel",
+    "python_version": "3.10.8 (tags/v3.10.8:aaaf517, Oct 11 2022, 16:50:30) [MSC v.1933 64 bit (AMD64)]",
+    "pyautogui_version": "0.9.54"
+  },
+  "monitors": {
+    "count": 2,
+    "list": [
+      {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1080,
+        "work_area": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "is_primary": true,
+        "index": 0,
+        "name": "primary"
+      },
+      {
+        "x": -1920,
+        "y": -805,
+        "width": 1920,
+        "height": 1080,
+        "work_area": {
+          "x": -1920,
+          "y": -805,
+          "width": 1920,
+          "height": 1080
+        },
+        "is_primary": false,
+        "index": 1,
+        "name": "secondary_1"
+      }
+    ],
+    "corners": {
+      "primary": {
+        "top_left": [
+          0,
+          0
+        ],
+        "top_right": [
+          1920,
+          0
+        ],
+        "bottom_left": [
+          0,
+          1080
+        ],
+        "bottom_right": [
+          1920,
+          1080
+        ],
+        "center": [
+          960,
+          540
+        ]
+      },
+      "secondary_1": {
+        "top_left": [
+          -1920,
+          -805
+        ],
+        "top_right": [
+          0,
+          -805
+        ],
+        "bottom_left": [
+          -1920,
+          275
+        ],
+        "bottom_right": [
+          0,
+          275
+        ],
+        "center": [
+          -960,
+          -265
+        ]
+      }
+    }
+  },
+  "virtual_desktop": {
+    "min_x": -1920,
+    "min_y": -805,
+    "max_x": 1920,
+    "max_y": 1080,
+    "width": 3840,
+    "height": 1885
+  },
+  "layout": {
+    "layout": "2_monitors",
+    "relationships": [
+      {
+        "from": "primary",
+        "to": "secondary_1",
+        "horizontal_gap": 0,
+        "vertical_gap": 0,
+        "alignment": "unknown",
+        "position": "left",
+        "vertical_position": "overlapping_vertical"
+      }
+    ]
+  },
+  "bridge_points": [
+    {
+      "mon1_name": "primary",
+      "mon2_name": "secondary_1",
+      "edge_type": "mon2_right_to_mon1_left",
+      "bridge_center": [
+        0,
+        137
+      ],
+      "mon1_waypoint": [
+        108,
+        191
+      ],
+      "mon2_waypoint": [
+        -108,
+        191
+      ],
+      "orientation": "horizontal",
+      "offsets": {
+        "major": 108,
+        "minor": 54
+      }
+    }
+  ],
+  "current_mouse": {
+    "global_x": -1084,
+    "global_y": 69,
+    "monitor_index": 1,
+    "monitor_name": "secondary_1",
+    "local_x": 836,
+    "local_y": 874,
+    "found": true
+  }
+}
