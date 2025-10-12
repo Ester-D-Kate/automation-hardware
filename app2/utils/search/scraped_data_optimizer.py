@@ -50,10 +50,10 @@ class AliceVectorOptimizerEnhanced:
         logger.info(f"⚡ Alice Vector Optimizer (ENHANCED) initialized - {self.max_workers} workers")
     
     async def optimize_scraped_results(self, 
-                                     scraped_results: List[Dict], 
-                                     user_query: str,
-                                     enhanced_query: str = None,  # NEW: Accept pre-generated enhanced query
-                                     target_budget: int = 25000) -> List[Dict]:
+                                       scraped_results: List[Dict], 
+                                       user_query: str,
+                                       enhanced_query: str = None,  # NEW: Accept pre-generated enhanced query
+                                       target_budget: int = 25000) -> List[Dict]:
         """
         ENHANCED: Process with pre-generated enhanced query from LLM Ranker
         """

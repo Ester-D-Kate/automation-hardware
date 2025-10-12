@@ -54,48 +54,48 @@ COMPLEX_DYNAMIC_SITES = [
 
 # COMBINED Ranking + Query Enhancement Prompt Template
 COMBINED_RANKING_ENHANCEMENT_PROMPT = """DUAL TASK: URL Ranking + Enhanced Query Generation
-
-Original Query: "{user_query}"
-
-TASK 1 - URL RANKING: Rank ALL these web search results by relevance to the query.
-For EACH URL, determine the BEST scraping method:
-**beautifulsoup**: Simple static HTML sites, blogs, news articles, documentation
-**crawl4ai**: Complex sites with dynamic content but no heavy JavaScript (e-commerce, modern news sites)
-**playwright**: JavaScript-heavy sites, SPAs, social media, interactive applications
-
-TASK 2 - ENHANCED QUERY GENERATION: Create an optimized search query for vector similarity matching.
-Transform the original query to include:
-- Synonyms and related terms that would appear in relevant content
-- Domain-specific keywords and professional terminology
-- Technical terms and context that content creators would use
-- Geographic, temporal, or categorical context when relevant
-
-Examples of query enhancement:
-- "weather today" → "weather forecast today current temperature conditions humidity precipitation climate meteorology"
-- "best laptops" → "best laptops 2025 reviews specifications performance benchmarks comparison top rated gaming business ultrabook"
-- "python tutorial" → "python programming tutorial guide learn basics syntax examples code functions variables loops"
-
-Return JSON with TWO sections:
-{{
-    "enhanced_query": "comprehensive enhanced version with domain-specific terms, synonyms, technical vocabulary, and contextual keywords that would appear in high-quality content about this topic",
-    "url_rankings": [
-        {{"id": 0, "relevance_score": 95, "method": "beautifulsoup", "reason": "Static site with simple HTML structure"}},
-        {{"id": 1, "relevance_score": 85, "method": "crawl4ai", "reason": "Dynamic content site with complex structure"}},
-        {{"id": 2, "relevance_score": 75, "method": "playwright", "reason": "JavaScript-heavy application requiring browser rendering"}},
-        ... (continue for ALL {total_count} URLs)
-    ]
-}}
-
-CRITICAL: 
-1. Enhanced query should be 3-5x longer than original with professional vocabulary
-2. Include ALL {total_count} URLs in rankings
-3. Ensure enhanced query includes terms that would appear in authoritative content
-
-Search Results:
-{url_data}
-
-Return ONLY valid JSON starting with {{ and ending with }}"""
-
+                                         
+                                         Original Query: "{user_query}"
+                                         
+                                         TASK 1 - URL RANKING: Rank ALL these web search results by relevance to the query.
+                                         For EACH URL, determine the BEST scraping method:
+                                         **beautifulsoup**: Simple static HTML sites, blogs, news articles, documentation
+                                         **crawl4ai**: Complex sites with dynamic content but no heavy JavaScript (e-commerce, modern news sites)
+                                         **playwright**: JavaScript-heavy sites, SPAs, social media, interactive applications
+                                         
+                                         TASK 2 - ENHANCED QUERY GENERATION: Create an optimized search query for vector similarity matching.
+                                         Transform the original query to include:
+                                         - Synonyms and related terms that would appear in relevant content
+                                         - Domain-specific keywords and professional terminology
+                                         - Technical terms and context that content creators would use
+                                         - Geographic, temporal, or categorical context when relevant
+                                         
+                                         Examples of query enhancement:
+                                         - "weather today" → "weather forecast today current temperature conditions humidity precipitation climate meteorology"
+                                         - "best laptops" → "best laptops 2025 reviews specifications performance benchmarks comparison top rated gaming business ultrabook"
+                                         - "python tutorial" → "python programming tutorial guide learn basics syntax examples code functions variables loops"
+                                         
+                                         Return JSON with TWO sections:
+                                         {{
+                                             "enhanced_query": "comprehensive enhanced version with domain-specific terms, synonyms, technical vocabulary, and contextual keywords that would appear in high-quality content about this topic",
+                                             "url_rankings": [
+                                                 {{"id": 0, "relevance_score": 95, "method": "beautifulsoup", "reason": "Static site with simple HTML structure"}},
+                                                 {{"id": 1, "relevance_score": 85, "method": "crawl4ai", "reason": "Dynamic content site with complex structure"}},
+                                                 {{"id": 2, "relevance_score": 75, "method": "playwright", "reason": "JavaScript-heavy application requiring browser rendering"}},
+                                                 ... (continue for ALL {total_count} URLs)
+                                             ]
+                                         }}
+                                         
+                                         CRITICAL: 
+                                         1. Enhanced query should be 3-5x longer than original with professional vocabulary
+                                         2. Include ALL {total_count} URLs in rankings
+                                         3. Ensure enhanced query includes terms that would appear in authoritative content
+                                         
+                                         Search Results:
+                                         {url_data}
+                                         
+                                         Return ONLY valid JSON starting with {{ and ending with }}"""
+                                         
 # System Prompt
 LLM_SYSTEM_PROMPT = """You are an expert at ranking web search results AND generating enhanced search queries for vector similarity matching. You understand when sites need specific scraping methods and how to optimize queries for semantic search."""
 
@@ -131,7 +131,10 @@ def get_api_key_by_name(key_name: str) -> str:
         return API_KEYS[index]
     return None
 
-def make_groq_request_with_fallback(messages, model, temperature=0.7, max_tokens=1500, api_key_priority_order=None):
+def make_groq_request_with_fallback(messages, model,
+                                    temperature=0.7, 
+                                    max_tokens=1500, 
+                                    api_key_priority_order=None):
     """Make Groq request with automatic fallback between API keys"""
     
     if api_key_priority_order is None:
@@ -202,7 +205,8 @@ def determine_simple_method(url: str) -> str:
     
     return 'beautifulsoup'
 
-def calculate_simple_relevance_score(result: Dict, query_words: List[str]) -> int:
+def calculate_simple_relevance_score(result: Dict, 
+                                     query_words: List[str]) -> int:
     """Calculate relevance score using simple keyword matching"""
     score = 0
     title = result.get('title', '').lower()
@@ -251,8 +255,8 @@ def log_method_distribution(results: List[Dict]) -> None:
 # ==================== MAIN COMBINED RANKING + ENHANCEMENT FUNCTION ====================
 
 async def rank_urls_with_enhanced_query(search_results: List[Dict], 
-                                       user_query: str, 
-                                       required_count: int = 5) -> Tuple[List[Dict], str]:
+                                        user_query: str, 
+                                        required_count: int = 5) -> Tuple[List[Dict], str]:
     """
     MAIN FUNCTION: Get URL rankings AND enhanced query in single LLM call
     
@@ -297,7 +301,8 @@ async def rank_urls_with_enhanced_query(search_results: List[Dict],
         enhanced_query = _simple_query_enhancement(user_query)
         return ranked_urls, enhanced_query
 
-async def _generate_combined_ranking_and_query(search_results: List[Dict], user_query: str) -> Tuple[List[Dict], str]:
+async def _generate_combined_ranking_and_query(search_results: List[Dict], 
+                                               user_query: str) -> Tuple[List[Dict], str]:
     """Generate URL rankings and enhanced query in single LLM call"""
     
     try:
@@ -318,7 +323,9 @@ async def _generate_combined_ranking_and_query(search_results: List[Dict], user_
         )
         
         llm_output = response.choices[0].message.content.strip()
-        ranked_results, enhanced_query = _parse_combined_response(llm_output, search_results, user_query)
+        ranked_results, enhanced_query = _parse_combined_response(llm_output, 
+                                                                  search_results, 
+                                                                  user_query)
         
         return ranked_results, enhanced_query
         
@@ -326,7 +333,8 @@ async def _generate_combined_ranking_and_query(search_results: List[Dict], user_
         logger.error(f"Combined ranking and query enhancement failed: {e}")
         raise e
 
-def _build_combined_ranking_prompt(user_query: str, url_data: List[Dict]) -> str:
+def _build_combined_ranking_prompt(user_query: str, 
+                                   url_data: List[Dict]) -> str:
     """Build combined prompt for URL ranking + query enhancement"""
     
     url_data_formatted = ""
@@ -345,7 +353,9 @@ def _build_combined_ranking_prompt(user_query: str, url_data: List[Dict]) -> str
         url_data=url_data_formatted
     )
 
-def _parse_combined_response(llm_output: str, original_results: List[Dict], user_query: str) -> Tuple[List[Dict], str]:
+def _parse_combined_response(llm_output: str, 
+                             original_results: List[Dict], 
+                             user_query: str) -> Tuple[List[Dict], str]:
     """Parse combined LLM response for both rankings and enhanced query"""
     
     try:
@@ -382,7 +392,8 @@ def _parse_combined_response(llm_output: str, original_results: List[Dict], user
         enhanced_query = _simple_query_enhancement(user_query)
         return ranked_results, enhanced_query
 
-def _build_ranked_results_from_combined(ranking_data: List[Dict], original_results: List[Dict]) -> List[Dict]:
+def _build_ranked_results_from_combined(ranking_data: List[Dict], 
+                                        original_results: List[Dict]) -> List[Dict]:
     """Build ranked results from combined LLM analysis data"""
     
     ranked_results = []
@@ -404,7 +415,8 @@ def _build_ranked_results_from_combined(ranking_data: List[Dict], original_resul
     
     return ranked_results, used_ids
 
-def _finalize_combined_ranking(ranked_results: List[Dict], original_results: List[Dict]) -> List[Dict]:
+def _finalize_combined_ranking(ranked_results: List[Dict], 
+                               original_results: List[Dict]) -> List[Dict]:
     """Finalize ranking by adding missing URLs and sorting"""
     
     if isinstance(ranked_results, tuple):

@@ -264,9 +264,142 @@ class DeviceMonitor:
 
 
 async def main():
-    """Main entry point"""
+    """
+    Main automation system:
+    - Device monitoring always runs (detects monitors, bridges, changes)
+    - Choose execution backend: Software (PyAutoGUI) or Hardware (Pico)
+    """
+    print("\n" + "="*80)
+    print("🚀 AUTOMATION SYSTEM - UNIFIED LAUNCHER")
+    print("="*80)
+    print("\n📋 SELECT EXECUTION MODE:")
+    print("   1. Software Executor (PyAutoGUI - for development/testing)")
+    print("   2. Hardware Executor (Pico HID - for production/BIOS)")
+    print("   0. Exit")
+    print("\n" + "="*80)
+    print("ℹ️  Device monitoring runs automatically in both modes")
+    print("="*80)
+    
+    choice = input("\nSelect mode: ").strip()
+    
+    if choice == '0':
+        print("👋 Goodbye!")
+        return
+    
+    # Start device monitor (always runs)
+    print("\n" + "="*80)
+    print("📡 STARTING DEVICE MONITOR")
+    print("="*80)
+    
     monitor = DeviceMonitor()
-    await monitor.run()
+    
+    # Initialize MQTT handler
+    monitor.mqtt = MQTTHandler(monitor._handle_mqtt_message)
+    
+    # Connect to MQTT
+    if not await monitor.mqtt.connect():
+        print("❌ MQTT connection failed")
+        return
+    
+    print("✅ MQTT connected successfully")
+    
+    # Load initial device info
+    monitor.current_device_info = await extract_complete_device_info(silent=False)
+    
+    # Publish initial device info
+    mouse_info = await get_current_mouse_position()
+    
+    monitors_info = monitor.current_device_info.get("monitors", {})
+    monitor_list = monitors_info.get("list", [])
+    vd = monitor.current_device_info.get("virtual_desktop", {})
+    
+    print("\n" + "="*80)
+    print("� DEVICE INFO PUBLISHED")
+    print("="*80)
+    print(f"   📺 Monitors: {len(monitor_list)}")
+    for mon in monitor_list:
+        print(f"      └─ {mon['name']}: {mon['width']}x{mon['height']} at ({mon['x']}, {mon['y']})")
+    
+    print(f"\n   �️  Virtual Desktop: {vd.get('width')}x{vd.get('height')}")
+    print(f"   📍 Current Mouse: ({mouse_info['global_x']}, {mouse_info['global_y']})")
+    
+    payload = convert_to_json(monitor.current_device_info)
+    monitor.mqtt.publish("LDrago_windows/device_info", payload)
+    
+    mouse_payload = convert_to_json(mouse_info)
+    monitor.mqtt.publish("LDrago_windows/mouse_position", mouse_payload)
+    
+    print("="*80)
+    
+    # Start executor based on choice
+    if choice == '1':
+        # Software executor
+        print("\n" + "="*80)
+        print("🖥️  STARTING SOFTWARE EXECUTOR (PyAutoGUI)")
+        print("="*80)
+        
+        from execute_command import MQTTExecutor
+        from screenshot_websocket_server import get_server_instance
+        
+        executor = MQTTExecutor()
+        executor.executor.bridge_system.monitors = monitor_list
+        executor.executor.bridge_system.virtual_desktop = vd
+        executor.executor.bridge_system.bridge_points = monitor.current_device_info.get('bridge_points', [])
+        
+        # Start WebSocket server for screenshots
+        ws_server = get_server_instance(host='0.0.0.0', port=8765)
+        print("🌐 Starting WebSocket server for screenshots...")
+        print(f"   URL: ws://localhost:8765")
+        print(f"   (10-20x faster than MQTT!)")
+        
+        if await executor.start():
+            print("✅ Software executor ready")
+            print("="*80)
+            
+            # Run monitor, executor, and WebSocket server
+            try:
+                # Create all tasks
+                monitor_task = asyncio.create_task(monitor.monitor_device())
+                executor_task = asyncio.create_task(executor.run_forever())
+                websocket_task = asyncio.create_task(ws_server.start())
+                
+                # Wait for all to complete (all run forever)
+                await asyncio.gather(monitor_task, executor_task, websocket_task)
+                
+            except KeyboardInterrupt:
+                print("\n\n" + "="*80)
+                print("⚠️  SYSTEM STOPPED BY USER")
+                print("="*80)
+            finally:
+                monitor.mqtt.disconnect()
+                print("✅ Disconnected from MQTT")
+        else:
+            print("❌ Failed to start software executor")
+            monitor.mqtt.disconnect()
+    
+    elif choice == '2':
+        # Hardware executor
+        print("\n" + "="*80)
+        print("🔧 HARDWARE EXECUTOR MODE")
+        print("="*80)
+        print("ℹ️  Expecting Pico hardware on UART")
+        print("ℹ️  Device monitor will track changes and update hardware")
+        print("="*80)
+        
+        # Just run device monitor - hardware listens to same MQTT topics
+        try:
+            await monitor.monitor_device()
+        except KeyboardInterrupt:
+            print("\n\n" + "="*80)
+            print("⚠️  MONITOR STOPPED BY USER")
+            print("="*80)
+        finally:
+            monitor.mqtt.disconnect()
+            print("✅ Disconnected from MQTT")
+    
+    else:
+        print("❌ Invalid choice")
+        monitor.mqtt.disconnect()
 
 
 if __name__ == "__main__":

@@ -5,6 +5,10 @@
 #include <ArduinoJson.h>
 #include <EEPROM.h>
 
+bool waitingForPicoResponse = false;
+unsigned long picoCommandSentTime = 0;
+const unsigned long PICO_TIMEOUT = 10000;
+
 // WiFi & MQTT Configuration
 String ssid_stored = "";
 String password_stored = "";
@@ -52,28 +56,92 @@ void sendScriptToPico(String script);
 void callback(char* topic, byte* payload, unsigned int length);
 void reconnect();
 bool shouldExecuteScript(String script, bool allowRepeat);
+void sendScriptToPico(String script);
+void handlePicoResponse();
 
 void sendScriptToPico(String script) {
-  // Create JSON format that the Pico expects
-  JsonDocument picoDoc;
-  picoDoc["ducky_script"] = script;
-  
-  String picoMessage;
-  serializeJson(picoDoc, picoMessage);
-  
-  // Send to Pico via UART (Serial)
-  Serial.println("========================================");
-  Serial.println("SENDING TO RASPBERRY PI PICO:");
-  Serial.println("Raw script: " + script);
-  Serial.println("JSON message: " + picoMessage);
-  Serial.println("========================================");
-  
-  // Send the JSON message to Pico
-  Serial.print(picoMessage);
-  Serial.print("\n"); // Newline for Pico to detect end of message
-  Serial.flush(); // Ensure data is sent immediately
-  
-  Serial.println("Script sent to Pico successfully!");
+    // Create JSON format that the Pico expects
+    JsonDocument picoDoc;
+    picoDoc["ducky_script"] = script;
+    String picoMessage;
+    serializeJson(picoDoc, picoMessage);
+
+    // Send to Pico via UART (Serial)
+    Serial.println("========================================");
+    Serial.println("SENDING TO RASPBERRY PI PICO:");
+    Serial.println("Raw script: " + script);
+    Serial.println("JSON message: " + picoMessage);
+    Serial.println("========================================");
+
+    // Send the JSON message to Pico
+    Serial.print(picoMessage);
+    Serial.print("\n"); // Newline for Pico to detect end of message
+    Serial.flush(); // Ensure data is sent immediately
+
+    // Set waiting state for Pico response
+    waitingForPicoResponse = true;
+    picoCommandSentTime = millis();
+    
+    Serial.println("⏳ Waiting for Pico execution confirmation...");
+}
+
+// Add this new function to handle Pico responses
+void handlePicoResponse() {
+    if (Serial.available()) {
+        String response = Serial.readStringUntil('\n');
+        response.trim();
+        
+        if (response.startsWith("PICO_DONE:")) {
+            waitingForPicoResponse = false;
+            Serial.println("✅ Pico execution confirmed: " + response);
+            
+            // Extract execution details
+            String executionData = response.substring(10); // Remove "PICO_DONE:"
+            
+            // Parse execution result
+            JsonDocument responseDoc;
+            DeserializationError error = deserializeJson(responseDoc, executionData);
+            
+            if (!error) {
+                String command = responseDoc["command"] | "";
+                String status = responseDoc["status"] | "";
+                long executionTime = responseDoc["execution_time"] | 0;
+                
+                Serial.println("📊 Execution Summary:");
+                Serial.println("   Command: " + command);
+                Serial.println("   Status: " + status);
+                Serial.println("   Time: " + String(executionTime) + "ms");
+                
+                // Optional: Send execution confirmation to MQTT for PyAutoGUI
+                JsonDocument confirmDoc;
+                confirmDoc["esp_id"] = "LDrago_windows";
+                confirmDoc["command"] = command;
+                confirmDoc["status"] = status;
+                confirmDoc["execution_time"] = executionTime;
+                confirmDoc["timestamp"] = millis();
+                
+                String confirmMessage;
+                serializeJson(confirmDoc, confirmMessage);
+                client.publish("LDrago_windows/pico_execution_done", confirmMessage.c_str());
+                
+            } else {
+                Serial.println("⚠️ Could not parse Pico response");
+            }
+            
+        } else if (response.startsWith("PICO_ERROR:")) {
+            waitingForPicoResponse = false;
+            Serial.println("❌ Pico execution error: " + response.substring(11));
+            
+        } else if (response.startsWith("PICO_PROGRESS:")) {
+            Serial.println("🔄 Pico progress: " + response.substring(14));
+        }
+    }
+    
+    // Check for timeout
+    if (waitingForPicoResponse && (millis() - picoCommandSentTime) > PICO_TIMEOUT) {
+        waitingForPicoResponse = false;
+        Serial.println("⚠️ Pico response timeout - assuming execution completed");
+    }
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
@@ -225,22 +293,43 @@ void loop() {
     }
     client.loop();
     
-    // WiFi health monitoring
-    if (WiFi.status() != WL_CONNECTED) {
-      Serial.println("WiFi disconnected! Attempting reconnection...");
-      wifiRetries++;
-      
-      if (wifiRetries >= maxWifiRetries) {
-        Serial.println("WiFi failed multiple times. Starting config mode...");
-        startConfigMode();
-      } else {
-        connectToWiFi();
+    // ===== HIGH-SPEED FEEDBACK PROCESSING =====
+    // Process multiple Pico responses per loop cycle
+    int feedbackProcessed = 0;
+    while (Serial.available() > 0 && feedbackProcessed < 5) {
+      handlePicoResponse();
+      feedbackProcessed++;
+      delayMicroseconds(100); // Tiny delay between processing
+    }
+    
+    // WiFi health monitoring (less frequent)
+    static unsigned long lastWiFiCheck = 0;
+    if (millis() - lastWiFiCheck > 1000) { // Check WiFi every 1 second
+      if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("WiFi disconnected! Attempting reconnection...");
+        wifiRetries++;
+        
+        if (wifiRetries >= maxWifiRetries) {
+          Serial.println("WiFi failed multiple times. Starting config mode...");
+          startConfigMode();
+        } else {
+          connectToWiFi();
+        }
       }
+      lastWiFiCheck = millis();
+    }
+    
+    // Timeout management
+    if (waitingForPicoResponse && (millis() - picoCommandSentTime) > PICO_TIMEOUT) {
+      Serial.println("⏰ Pico timeout - releasing wait");
+      waitingForPicoResponse = false;
     }
   }
   
-  delay(100);
+  // Minimal delay for maximum responsiveness
+  delay(10); // Ultra-fast loop for real-time feedback
 }
+
 
 // ===== WIFI CONFIGURATION FUNCTIONS =====
 void clearEEPROM() {

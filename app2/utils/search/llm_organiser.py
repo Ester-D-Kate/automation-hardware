@@ -18,26 +18,22 @@ logger = logging.getLogger(__name__)
 # ==================== GLOBAL CONFIGURATION ====================
 
 # LLM Configuration - Same model as llm_ranker for consistency
-API_KEYS = [
-    os.getenv('GROQ_API_KEY'),
-    os.getenv('GROQ_API_KEY_ALT_1'), 
-    os.getenv('GROQ_API_KEY_ALT_2'),
-    os.getenv('GROQ_API_KEY_ALT_3'),
-    os.getenv('GROQ_API_KEY_ALT_4')
-]
+API_KEYS = [os.getenv('GROQ_API_KEY'),
+            os.getenv('GROQ_API_KEY_ALT_1'), 
+            os.getenv('GROQ_API_KEY_ALT_2'),
+            os.getenv('GROQ_API_KEY_ALT_3'),
+            os.getenv('GROQ_API_KEY_ALT_4')]
 
 AVAILABLE_API_KEYS = [key for key in API_KEYS if key and key.strip()]
 if not AVAILABLE_API_KEYS:
     raise ValueError("No valid GROQ API keys found in environment variables.")
 
-ORGANIZER_API_ORDER = [
-    'GROQ_API_KEY_ALT_2',
-    'GROQ_API_KEY_ALT_3',
-    'GROQ_API_KEY_ALT_4',
-    'GROQ_API_KEY',
-    'GROQ_API_KEY_ALT_1'
-]
-
+ORGANIZER_API_ORDER = ['GROQ_API_KEY_ALT_2',
+                       'GROQ_API_KEY_ALT_3',
+                       'GROQ_API_KEY_ALT_4',
+                       'GROQ_API_KEY',
+                       'GROQ_API_KEY_ALT_1']
+                   
 LLM_MODEL = "llama-3.3-70b-versatile"
 LLM_TEMPERATURE = 0.1
 MAX_TOKENS = 8192
@@ -49,58 +45,58 @@ QUALITY_VALIDATION_ENABLED = True
 
 # Vector DB Optimized Research Synthesis Prompt
 VECTOR_OPTIMIZED_PROMPT = """You are Alice's Expert Information Synthesizer processing VECTOR-OPTIMIZED content. Create comprehensive, accurate research synthesis from pre-selected, high-relevance sources.
-
-🎯 **MISSION:** Create detailed, relevant synthesis for user query
-Query: "{user_query}"
-Vector-Optimized Sources: {source_data}
-
-🚨 **CRITICAL ADVANTAGES:** 
-- Sources are PRE-FILTERED for relevance (85%+ semantic similarity)
-- Content is SPAM-FREE (no navigation, ads, or boilerplate)
-- All content is QUERY-RELEVANT (vector similarity selected)
-- NO truncation applied - full optimized content available
-
-🚨 **CRITICAL LENGTH REQUIREMENT:** 
-- unified_content MUST be 2500-4000 characters minimum
-- Since content is pre-optimized, you have access to PERFECT information
-- Expand with comprehensive details from the high-quality sources
-- No need to filter spam - content is already clean
-
-📚 **CORE REQUIREMENTS:**
-1. **LEVERAGE PRE-OPTIMIZATION** - Use the fact that content is already semantically relevant
-2. **COMPREHENSIVE SYNTHESIS** - Combine all pre-selected high-quality information
-3. **TECHNICAL DEPTH** - Include detailed specifications, numbers, and technical details
-4. **PRACTICAL GUIDANCE** - Provide actionable recommendations from clean sources
-5. **COMPLETE COVERAGE** - Address all aspects since sources are perfectly matched
-
-🧠 **SYNTHESIS STRATEGY:**
-- **Technical Integration**: Combine specifications and data from multiple sources
-- **Comprehensive Analysis**: Deep-dive into pre-selected relevant information  
-- **Practical Applications**: Extract actionable insights from clean content
-- **Comparative Analysis**: Compare information across optimized sources
-- **Future Implications**: Discuss trends and predictions from authoritative content
-
-CRITICAL: You MUST respond with ONLY valid JSON. unified_content MUST be 2500-4000 characters.
-
-REQUIRED JSON FORMAT:
-{{
-  "unified_content": "COMPREHENSIVE 2500-4000 character response leveraging vector-optimized, spam-free content to provide extensive technical details, practical guidance, comparative analysis, and actionable insights with complete coverage of the user's query from pre-selected high-relevance sources.",
-  "key_facts": ["Technical specification with exact numbers from optimized sources", "Practical implementation detail from clean content", "Comparative analysis from multiple pre-selected sources", "Performance metrics from authoritative data", "Cost/pricing information from verified sources"],
-  "main_findings": "Comprehensive summary of key insights from vector-optimized sources with technical specifications and practical recommendations",
-  "information_quality": "excellent",
-  "confidence": 0.95,
-  "content_depth": "comprehensive",
-  "word_count": 650,
-  "coverage_areas": ["technical_specifications", "implementation_guide", "comparative_analysis", "performance_metrics", "cost_analysis", "practical_recommendations"],
-  "source_usage": [{{"source_id": 1, "contributed_info": "Specific technical information and data points extracted from this vector-optimized source"}}],
-  "most_valuable_sources": [1, 2, 3],
-  "source_synthesis": "Explanation of how vector-optimized sources complement each other to provide complete technical and practical coverage"
-}}
-
-🚨 CRITICAL: Since content is vector-optimized and spam-free, create comprehensive 2500-4000 character response with deep technical analysis.
-
-ONLY JSON. START WITH {{ END WITH }}"""
-
+                             
+                             🎯 **MISSION:** Create detailed, relevant synthesis for user query
+                             Query: "{user_query}"
+                             Vector-Optimized Sources: {source_data}
+                             
+                             🚨 **CRITICAL ADVANTAGES:** 
+                             - Sources are PRE-FILTERED for relevance (85%+ semantic similarity)
+                             - Content is SPAM-FREE (no navigation, ads, or boilerplate)
+                             - All content is QUERY-RELEVANT (vector similarity selected)
+                             - NO truncation applied - full optimized content available
+                             
+                             🚨 **CRITICAL LENGTH REQUIREMENT:** 
+                             - unified_content MUST be 2500-4000 characters minimum
+                             - Since content is pre-optimized, you have access to PERFECT information
+                             - Expand with comprehensive details from the high-quality sources
+                             - No need to filter spam - content is already clean
+                             
+                             📚 **CORE REQUIREMENTS:**
+                             1. **LEVERAGE PRE-OPTIMIZATION** - Use the fact that content is already semantically relevant
+                             2. **COMPREHENSIVE SYNTHESIS** - Combine all pre-selected high-quality information
+                             3. **TECHNICAL DEPTH** - Include detailed specifications, numbers, and technical details
+                             4. **PRACTICAL GUIDANCE** - Provide actionable recommendations from clean sources
+                             5. **COMPLETE COVERAGE** - Address all aspects since sources are perfectly matched
+                             
+                             🧠 **SYNTHESIS STRATEGY:**
+                             - **Technical Integration**: Combine specifications and data from multiple sources
+                             - **Comprehensive Analysis**: Deep-dive into pre-selected relevant information  
+                             - **Practical Applications**: Extract actionable insights from clean content
+                             - **Comparative Analysis**: Compare information across optimized sources
+                             - **Future Implications**: Discuss trends and predictions from authoritative content
+                             
+                             CRITICAL: You MUST respond with ONLY valid JSON. unified_content MUST be 2500-4000 characters.
+                             
+                             REQUIRED JSON FORMAT:
+                             {{
+                               "unified_content": "COMPREHENSIVE 2500-4000 character response leveraging vector-optimized, spam-free content to provide extensive technical details, practical guidance, comparative analysis, and actionable insights with complete coverage of the user's query from pre-selected high-relevance sources.",
+                               "key_facts": ["Technical specification with exact numbers from optimized sources", "Practical implementation detail from clean content", "Comparative analysis from multiple pre-selected sources", "Performance metrics from authoritative data", "Cost/pricing information from verified sources"],
+                               "main_findings": "Comprehensive summary of key insights from vector-optimized sources with technical specifications and practical recommendations",
+                               "information_quality": "excellent",
+                               "confidence": 0.95,
+                               "content_depth": "comprehensive",
+                               "word_count": 650,
+                               "coverage_areas": ["technical_specifications", "implementation_guide", "comparative_analysis", "performance_metrics", "cost_analysis", "practical_recommendations"],
+                               "source_usage": [{{"source_id": 1, "contributed_info": "Specific technical information and data points extracted from this vector-optimized source"}}],
+                               "most_valuable_sources": [1, 2, 3],
+                               "source_synthesis": "Explanation of how vector-optimized sources complement each other to provide complete technical and practical coverage"
+                             }}
+                             
+                             🚨 CRITICAL: Since content is vector-optimized and spam-free, create comprehensive 2500-4000 character response with deep technical analysis.
+                             
+                             ONLY JSON. START WITH {{ END WITH }}"""
+                             
 # ==================== UTILITY FUNCTIONS ====================
 
 def sanitize_json_content(raw_content: str) -> str:
@@ -134,20 +130,22 @@ def sanitize_json_content(raw_content: str) -> str:
 
 def get_api_key_by_name(key_name: str) -> str:
     """Get API key by environment variable name"""
-    key_map = {
-        'GROQ_API_KEY': 0,
-        'GROQ_API_KEY_ALT_1': 1,
-        'GROQ_API_KEY_ALT_2': 2,
-        'GROQ_API_KEY_ALT_3': 3,
-        'GROQ_API_KEY_ALT_4': 4
-    }
+    key_map = {'GROQ_API_KEY': 0,
+               'GROQ_API_KEY_ALT_1': 1,
+               'GROQ_API_KEY_ALT_2': 2,
+               'GROQ_API_KEY_ALT_3': 3,
+               'GROQ_API_KEY_ALT_4': 4}
     
     index = key_map.get(key_name)
     if index is not None and index < len(API_KEYS):
         return API_KEYS[index]
     return None
 
-def make_groq_request_with_fallback(messages, model, temperature=0.1, max_tokens=8192, api_key_priority_order=None):
+def make_groq_request_with_fallback(messages, 
+                                    model, 
+                                    temperature=0.1, 
+                                    max_tokens=8192, 
+                                    api_key_priority_order=None):
     """Universal Groq request with automatic fallback between API keys"""
     
     if api_key_priority_order is None:
@@ -164,12 +162,10 @@ def make_groq_request_with_fallback(messages, model, temperature=0.1, max_tokens
             
         try:
             client = Groq(api_key=api_key)
-            response = client.chat.completions.create(
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens
-            )
+            response = client.chat.completions.create(model=model,
+                                                      messages=messages,
+                                                      temperature=temperature,
+                                                      max_tokens=max_tokens)
             
             logger.info(f"✅ Successfully used API key: {key_name}")
             return response
@@ -201,25 +197,21 @@ def validate_synthesis_quality(result: Dict) -> Dict[str, Any]:
     
     content = result.get('unified_content', '')
     
-    quality_checks = {
-        'length_adequate': len(content) >= MIN_UNIFIED_CONTENT_CHARS,
-        'target_length_met': len(content) >= TARGET_UNIFIED_CONTENT_CHARS,
-        'technical_details': any(keyword in content.lower() for keyword in ['model', 'api', 'specification', 'performance', 'cost', 'implementation']),
-        'specific_numbers': bool(re.search(r'\d+', content)),
-        'multiple_sources': len(result.get('source_usage', [])) >= 2,
-        'comprehensive_coverage': len(result.get('coverage_areas', [])) >= 4,
-        'detailed_facts': len(result.get('key_facts', [])) >= 4
-    }
+    quality_checks = {'length_adequate': len(content) >= MIN_UNIFIED_CONTENT_CHARS,
+                      'target_length_met': len(content) >= TARGET_UNIFIED_CONTENT_CHARS,
+                      'technical_details': any(keyword in content.lower() for keyword in ['model', 'api', 'specification', 'performance', 'cost', 'implementation']),
+                      'specific_numbers': bool(re.search(r'\d+', content)),
+                      'multiple_sources': len(result.get('source_usage', [])) >= 2,
+                      'comprehensive_coverage': len(result.get('coverage_areas', [])) >= 4,
+                      'detailed_facts': len(result.get('key_facts', [])) >= 4}
     
     quality_score = sum(quality_checks.values()) / len(quality_checks)
     
-    return {
-        'quality_score': quality_score,
-        'quality_checks': quality_checks,
-        'content_length': len(content),
-        'passes_quality': quality_score >= 0.8,  # Higher threshold for vector-optimized content
-        'recommendations': [check for check, passed in quality_checks.items() if not passed]
-    }
+    return {'quality_score': quality_score,
+            'quality_checks': quality_checks,
+            'content_length': len(content),
+            'passes_quality': quality_score >= 0.8,  # Higher threshold for vector-optimized content
+            'recommendations': [check for check, passed in quality_checks.items() if not passed]}
 
 # ==================== MAIN CONTENT ORGANIZER CLASS ====================
 
@@ -230,8 +222,8 @@ class ContentOrganizer:
     """
     
     async def organize_scraped_content_optimized(self, 
-                                               optimized_results: List[Dict], 
-                                               user_query: str) -> Dict[str, Any]:
+                                                 optimized_results: List[Dict], 
+                                                 user_query: str) -> Dict[str, Any]:
         """
         NEW METHOD: Process vector-optimized content WITHOUT any truncation
         
@@ -264,45 +256,43 @@ class ContentOrganizer:
             relevance_score = result.get('relevance_score', 0.8)
             
             # Create content summary entry (FULL optimized content, NO truncation)
-            content_summary.append({
-                "source": i + 1,
-                "title": title,
-                "url": url,
-                "content_preview": content,  # FULL OPTIMIZED CONTENT
-                "quality_score": quality_score,
-                "relevance_score": relevance_score,
-                "word_count": len(content.split()),
-                "char_count": len(content),
-                "truncated": False,  # NEVER truncated - already optimized!
-                "source_type": result.get('source_type', 'vector_optimized'),
-                "optimization_applied": True
-            })
-            
+            content_summary.append({"source": i + 1,
+                                    "title": title,
+                                    "url": url,
+                                    "content_preview": content,  # FULL OPTIMIZED CONTENT
+                                    "quality_score": quality_score,
+                                    "relevance_score": relevance_score,
+                                    "word_count": len(content.split()),
+                                    "char_count": len(content),
+                                    "truncated": False,  # NEVER truncated - already optimized!
+                                    "source_type": result.get('source_type', 'vector_optimized'),
+                                    "optimization_applied": True})
+                                
             # Track source URLs
             if url and title:
-                source_urls.append({
-                    "source_id": i + 1,
-                    "title": title,
-                    "url": url,
-                    "domain": url.split('/')[2] if '/' in url else 'unknown',
-                    "quality_score": quality_score,
-                    "relevance_score": relevance_score,
-                    "content_length": len(content),
-                    "was_truncated": False,
-                    "source_type": result.get('source_type', 'vector_optimized')
-                })
+                source_urls.append({"source_id": i + 1,
+                                    "title": title,
+                                    "url": url,
+                                    "domain": url.split('/')[2] if '/' in url else 'unknown',
+                                    "quality_score": quality_score,
+                                    "relevance_score": relevance_score,
+                                    "content_length": len(content),
+                                    "was_truncated": False,
+                                    "source_type": result.get('source_type', 'vector_optimized')})
         
         logger.info(f"✅ Vector-optimized content prepared: {total_content_size:,} chars from {len(content_summary)} high-relevance sources")
         
         # Generate comprehensive synthesis from clean, relevant content
         try:
-            synthesis_result = await self._generate_vector_optimized_synthesis(
-                content_summary, user_query, source_urls, optimized_results
-            )
+            synthesis_result = await self._generate_vector_optimized_synthesis(content_summary, 
+                                                                               user_query, 
+                                                                               source_urls, 
+                                                                               optimized_results)
             
             # Enhanced post-processing for vector-optimized content
             if synthesis_result:
-                synthesis_result = self._enhance_vector_synthesis(synthesis_result, optimized_results)
+                synthesis_result = self._enhance_vector_synthesis(synthesis_result, 
+                                                                  optimized_results)
                 
                 # Quality validation with higher standards
                 if QUALITY_VALIDATION_ENABLED:
@@ -319,39 +309,32 @@ class ContentOrganizer:
             
             # Add vector optimization metadata
             if synthesis_result:
-                synthesis_result.update({
-                    'vector_optimized': True,
-                    'truncation_applied': False,
-                    'optimization_method': 'semantic_vector_filtering',
-                    'source_relevance_avg': sum(r.get('relevance_score', 0) for r in optimized_results) / len(optimized_results),
-                    'original_vs_optimized': {
-                        'optimized_sources': len(optimized_results),
-                        'total_chars_processed': total_content_size,
-                        'content_quality': 'vector_filtered_high_relevance'
-                    }
-                })
-            
+                synthesis_result.update({'vector_optimized': True,
+                                         'truncation_applied': False,
+                                         'optimization_method': 'semantic_vector_filtering',
+                                         'source_relevance_avg': sum(r.get('relevance_score', 0) for r in optimized_results) / len(optimized_results),
+                                         'original_vs_optimized': {'optimized_sources': len(optimized_results),
+                                                                   'total_chars_processed': total_content_size,
+                                                                   'content_quality': 'vector_filtered_high_relevance'}})
             return synthesis_result
             
         except Exception as e:
             logger.error(f"❌ Vector-optimized synthesis failed: {str(e)}")
             return self._create_vector_optimized_fallback(content_summary, user_query, optimized_results)
     
-    async def _generate_vector_optimized_synthesis(self, 
-                                                  content_summary: List[Dict], 
-                                                  user_query: str, 
-                                                  source_urls: List[Dict], 
-                                                  optimized_results: List[Dict]) -> Dict[str, Any]:
+    async def _generate_vector_optimized_synthesis(self,
+                                                   content_summary: List[Dict],
+                                                   user_query: str,
+                                                   source_urls: List[Dict],
+                                                   optimized_results: List[Dict]) -> Dict[str, Any]:
         """Generate comprehensive synthesis from vector-optimized content"""
         
         logger.debug("🎯 Building vector-optimized synthesis prompt...")
         
         try:
             # Build enhanced prompt for vector-optimized content
-            prompt = VECTOR_OPTIMIZED_PROMPT.format(
-                user_query=user_query,
-                source_data=json.dumps(content_summary, indent=1)
-            )
+            prompt = VECTOR_OPTIMIZED_PROMPT.format(user_query=user_query,
+                                                    source_data=json.dumps(content_summary, indent=1))
             
             logger.debug(f"📊 Vector-optimized prompt: {len(prompt)} chars, {len(content_summary)} pre-filtered sources")
             
@@ -363,13 +346,11 @@ class ContentOrganizer:
         logger.debug("🧠 Processing vector-optimized content with LLM...")
         
         try:
-            response = make_groq_request_with_fallback(
-                messages=[{"role": "user", "content": prompt}],
-                model=LLM_MODEL,
-                temperature=LLM_TEMPERATURE,
-                max_tokens=MAX_TOKENS,
-                api_key_priority_order=ORGANIZER_API_ORDER
-            )
+            response = make_groq_request_with_fallback(messages=[{"role": "user", "content": prompt}],
+                                                       model=LLM_MODEL,
+                                                       temperature=LLM_TEMPERATURE,
+                                                       max_tokens=MAX_TOKENS,
+                                                       api_key_priority_order=ORGANIZER_API_ORDER)                                       
             
             logger.debug("✅ Vector-optimized LLM processing successful!")
             
@@ -397,14 +378,11 @@ class ContentOrganizer:
                 raise Exception("Invalid JSON structure from LLM")
             
             # Add comprehensive metadata
-            result.update({
-                'processing_method': 'vector_optimized_synthesis',
-                'source_count': len(content_summary),
-                'total_optimized_chars': sum(len(s['content_preview']) for s in content_summary),
-                'source_urls': source_urls,
-                'vector_optimization_applied': True
-            })
-            
+            result.update({'processing_method': 'vector_optimized_synthesis',
+                           'source_count': len(content_summary),
+                           'total_optimized_chars': sum(len(s['content_preview']) for s in content_summary),
+                           'source_urls': source_urls,
+                           'vector_optimization_applied': True})
             return result
             
         except json.JSONDecodeError as e:
@@ -415,7 +393,8 @@ class ContentOrganizer:
             logger.error(f"❌ Vector-optimized response processing failed: {e}")
             raise
     
-    def _enhance_vector_synthesis(self, result: Dict, optimized_sources: List[Dict]) -> Dict:
+    def _enhance_vector_synthesis(self, result: Dict, 
+                                  optimized_sources: List[Dict]) -> Dict:
         """Enhance synthesis with vector-optimized content insights"""
         
         if not result or not isinstance(result, dict):
@@ -425,35 +404,26 @@ class ContentOrganizer:
         technical_insights = self._extract_technical_insights(optimized_sources)
         
         # Enhance result with vector-specific metadata
-        result.update({
-            'vector_insights': {
-                'avg_relevance_score': sum(s.get('relevance_score', 0) for s in optimized_sources) / len(optimized_sources),
-                'technical_depth': len(technical_insights.get('technical_terms', [])),
-                'quantitative_data_points': len(technical_insights.get('numbers', [])),
-                'source_diversity': len(set(s.get('url', '').split('/')[2] for s in optimized_sources if s.get('url')))
-            }
-        })
-        
+        result.update({'vector_insights': {'avg_relevance_score': sum(s.get('relevance_score', 0) for s in optimized_sources) / len(optimized_sources),
+                                           'technical_depth': len(technical_insights.get('technical_terms', [])),
+                                           'quantitative_data_points': len(technical_insights.get('numbers', [])),
+                                           'source_diversity': len(set(s.get('url', '').split('/')[2] for s in optimized_sources if s.get('url')))}})
         return result
     
     def _extract_technical_insights(self, sources: List[Dict]) -> Dict:
         """Extract technical insights from vector-optimized sources"""
         
-        technical_data = {
-            'technical_terms': set(),
-            'numbers': [],
-            'specifications': []
-        }
-        
+        technical_data = {'technical_terms': set(),
+                          'numbers': [],
+                          'specifications': []}
+                      
         for source in sources:
             content = source.get('content', '').lower()
             
             # Extract technical terms
-            tech_patterns = [
-                r'\b\d+(?:\.\d+)?\s*(?:gb|mb|kb|ghz|mhz|cores?|tokens?|ms|seconds?)\b',
-                r'\b(?:api|sdk|model|algorithm|performance|latency|throughput)\b',
-                r'\$\d+(?:\.\d+)?(?:/month|/year|/request)?'
-            ]
+            tech_patterns = [r'\b\d+(?:\.\d+)?\s*(?:gb|mb|kb|ghz|mhz|cores?|tokens?|ms|seconds?)\b',
+                             r'\b(?:api|sdk|model|algorithm|performance|latency|throughput)\b',
+                             r'\$\d+(?:\.\d+)?(?:/month|/year|/request)?']              
             
             for pattern in tech_patterns:
                 matches = re.findall(pattern, content)
@@ -465,7 +435,9 @@ class ContentOrganizer:
         
         return technical_data
     
-    def _create_vector_optimized_fallback(self, content_summary: List[Dict], user_query: str, optimized_results: List[Dict]) -> Dict[str, Any]:
+    def _create_vector_optimized_fallback(self, 
+                                          content_summary: List[Dict], 
+                                          user_query: str, optimized_results: List[Dict]) -> Dict[str, Any]:
         """Create fallback response for vector-optimized content"""
         
         logger.info("🔄 Creating vector-optimized fallback response...")
@@ -479,49 +451,41 @@ class ContentOrganizer:
         
         unified_content = "\n\n".join(combined_content)
         
-        return {
-            "unified_content": unified_content,
-            "key_facts": [
-                f"Vector-optimized analysis of {len(content_summary)} high-relevance sources",
-                f"Content pre-filtered for semantic relevance to: {user_query}",
-                f"Spam and navigation content removed through vector optimization",
-                f"Average relevance score: {sum(r.get('relevance_score', 0) for r in optimized_results) / len(optimized_results):.3f}",
-                f"Total optimized content: {len(unified_content):,} characters"
-            ],
-            "main_findings": f"Comprehensive analysis from {len(content_summary)} vector-optimized sources providing high-relevance information about {user_query}",
-            "information_quality": "excellent",
-            "confidence": 0.85,
-            "content_depth": "comprehensive",
-            "word_count": len(unified_content.split()),
-            "coverage_areas": ["vector_optimized_content", "high_relevance_sources", "spam_filtered"],
-            "source_usage": [
-                {"source_id": i+1, "contributed_info": f"Vector-optimized content from {summary.get('title', 'source')}"} 
-                for i, summary in enumerate(content_summary)
-            ],
-            "most_valuable_sources": list(range(1, len(content_summary) + 1)),
-            "source_synthesis": "Vector database semantic filtering ensured all sources provide high-relevance content",
-            "vector_optimized": True,
-            "fallback_applied": True
-        }
+        return {"unified_content": unified_content,
+                "key_facts": [f"Vector-optimized analysis of {len(content_summary)} high-relevance sources",
+                              f"Content pre-filtered for semantic relevance to: {user_query}",
+                              f"Spam and navigation content removed through vector optimization",
+                              f"Average relevance score: {sum(r.get('relevance_score', 0) for r in optimized_results) / len(optimized_results):.3f}",
+                              f"Total optimized content: {len(unified_content):,} characters"],
+                "main_findings": f"Comprehensive analysis from {len(content_summary)} vector-optimized sources providing high-relevance information about {user_query}",
+                "information_quality": "excellent",
+                "confidence": 0.85,
+                "content_depth": "comprehensive",
+                "word_count": len(unified_content.split()),
+                "coverage_areas": ["vector_optimized_content", "high_relevance_sources", "spam_filtered"],
+                "source_usage": [{"source_id": i+1, "contributed_info": f"Vector-optimized content from {summary.get('title', 'source')}"} 
+                                   for i, summary in enumerate(content_summary)],
+                "most_valuable_sources": list(range(1, len(content_summary) + 1)),
+                "source_synthesis": "Vector database semantic filtering ensured all sources provide high-relevance content",
+                "vector_optimized": True,
+                "fallback_applied": True}
     
     def _create_fallback_response(self, user_query: str) -> Dict[str, Any]:
         """Create fallback when no optimized results available"""
         
-        return {
-            "unified_content": f"No vector-optimized content available for query: {user_query}. Please ensure the vector optimization process completed successfully.",
-            "key_facts": ["No optimized sources available", "Vector optimization may have failed", "Try adjusting query or check vector database connection"],
-            "main_findings": "Unable to process request due to lack of vector-optimized content",
-            "information_quality": "poor",
-            "confidence": 0.1,
-            "content_depth": "minimal",
-            "word_count": 0,
-            "coverage_areas": [],
-            "source_usage": [],
-            "most_valuable_sources": [],
-            "source_synthesis": "No vector-optimized sources available for synthesis",
-            "vector_optimized": False,
-            "error": "no_optimized_content_available"
-        }
+        return {"unified_content": f"No vector-optimized content available for query: {user_query}. Please ensure the vector optimization process completed successfully.",
+                "key_facts": ["No optimized sources available", "Vector optimization may have failed", "Try adjusting query or check vector database connection"],
+                "main_findings": "Unable to process request due to lack of vector-optimized content",
+                "information_quality": "poor",
+                "confidence": 0.1,
+                "content_depth": "minimal",
+                "word_count": 0,
+                "coverage_areas": [],
+                "source_usage": [],
+                "most_valuable_sources": [],
+                "source_synthesis": "No vector-optimized sources available for synthesis",
+                "vector_optimized": False,
+                "error": "no_optimized_content_available"}
 
 # ==================== GLOBAL INSTANCE MANAGEMENT ====================
 

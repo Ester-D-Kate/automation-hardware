@@ -12,6 +12,11 @@ from adafruit_hid.consumer_control import ConsumerControl
 from adafruit_hid.consumer_control_code import ConsumerControlCode
 from adafruit_hid.keyboard_layout_us import KeyboardLayoutUS as KeyboardLayout
 from adafruit_hid.keycode import Keycode
+from adafruit_hid.mouse import Mouse 
+
+# ===== GLOBALS =====
+execution_start_time = 0
+current_execution_command = ""
 
 # ---- Ducky Key/Consumer Code Maps ----
 duckyKeys = {
@@ -40,6 +45,7 @@ duckyKeys = {
     'F20': Keycode.F20, 'F21': Keycode.F21, 'F22': Keycode.F22, 'F23': Keycode.F23,
     'F24': Keycode.F24
 }
+
 duckyConsumerKeys = {
     'MK_VOLUP': ConsumerControlCode.VOLUME_INCREMENT, 'MK_VOLDOWN': ConsumerControlCode.VOLUME_DECREMENT, 'MK_MUTE': ConsumerControlCode.MUTE,
     'MK_NEXT': ConsumerControlCode.SCAN_NEXT_TRACK, 'MK_PREV': ConsumerControlCode.SCAN_PREVIOUS_TRACK,
@@ -57,8 +63,30 @@ specialChars = "!@#$%^&*()"
 
 kbd = Keyboard(usb_hid.devices)
 consumerControl = ConsumerControl(usb_hid.devices)
+mouse = Mouse(usb_hid.devices) 
 layout = KeyboardLayout(kbd)
 defaultDelay = 0
+
+
+
+def send_execution_feedback(command, status, execution_time=0, progress=None, error=None):
+    """Send feedback to ESP01 about command execution"""
+    # Note: This function will be initialized after uart is created
+    # For now, just print the feedback
+    if progress:
+        feedback = f"PICO_PROGRESS:{progress}"
+    elif error:
+        feedback = f"PICO_ERROR:{error}"
+    else:
+        feedback_data = {
+            "command": command,
+            "status": status,
+            "execution_time": execution_time
+        }
+        feedback = f"PICO_DONE:{json.dumps(feedback_data)}"
+    
+    print(f"📤 Feedback: {feedback}")
+    # UART writing will be added after uart initialization
 
 def deepcopy(List):
     return List[:]
@@ -116,9 +144,11 @@ def evaluateExpression(expression):
 
 def parseLine(line, script_lines):
     global defaultDelay, variables, functions, defines
+    global execution_start_time, current_execution_command
     line = line.strip()
     line = line.replace("$_RANDOM_INT", str(random.randint(int(variables.get("$_RANDOM_MIN", 0)), int(variables.get("$_RANDOM_MAX", 65535)))))
     line = replaceDefines(line)
+    
     if line[:10] == "INJECT_MOD":
         line = line[11:]
     elif line.startswith("REM_BLOCK"):
@@ -140,6 +170,94 @@ def parseLine(line, script_lines):
             kbd.release(commandKeycode)
         else:
             print(f"Unknown key to RELEASE: <{key}>")
+    # ===== MOUSE COMMANDS =====
+    elif line == "MOUSE_CALIBRATE":
+        # Reset to (0,0) - just move way off screen
+        mouse.move(-32767, -32767)
+        send_execution_feedback("MOUSE_CALIBRATE", "success", 0)
+
+    # ===== MOUSE COMMANDS START HERE =====
+    elif line == "CLICK" or line == "LEFTCLICK":
+        mouse.click(Mouse.LEFT_BUTTON)
+    elif line == "RIGHTCLICK":
+        mouse.click(Mouse.RIGHT_BUTTON)
+    elif line == "MIDDLECLICK":
+        mouse.click(Mouse.MIDDLE_BUTTON)
+    elif line == "DOUBLECLICK":
+        mouse.click(Mouse.LEFT_BUTTON)
+        time.sleep(0.1)
+        mouse.click(Mouse.LEFT_BUTTON)
+    elif line == "MOUSE_CALIBRATE":
+        mouse.move(-32767, -32767)
+        send_execution_feedback("MOUSE_CALIBRATE", "success", 0)
+    elif line == "MOUSE_GET_CONFIG":
+        # Send basic status
+        config_data = {"status": "ready", "coordinate_system": "normalized"}
+        config_json = json.dumps(config_data)
+        send_execution_feedback("MOUSE_GET_CONFIG", "success", 0, progress=config_json)
+    elif line.startswith("MOUSE_MOVE "):
+        # MOUSE_MOVE x y - Absolute move using normalized coordinates (-32767 to 32767)
+        # Backend converts screen coords to this range
+        coords = line[11:].split()
+        if len(coords) == 2:
+            try:
+                x, y = int(coords[0]), int(coords[1])
+                # Clamp to valid range
+                x = max(-32767, min(32767, x))
+                y = max(-32767, min(32767, y))
+                # Reset to origin
+                mouse.move(-32767, -32767)
+                time.sleep(0.05)
+                # Move to normalized target
+                mouse.move(x, y)
+                send_execution_feedback("MOUSE_MOVE", "success", 0)
+            except ValueError:
+                send_execution_feedback("MOUSE_MOVE", "error", 0, error="Invalid coordinates")
+    
+    elif line.startswith("MOUSE_MOVE_REL "):
+        # MOUSE_MOVE_REL dx dy - Relative move using FULL 16-bit range (-32768 to 32767)
+        coords = line[15:].split()
+        if len(coords) == 2:
+            try:
+                dx, dy = int(coords[0]), int(coords[1])
+                
+                # Clamp to 16-bit signed integer range
+                dx = max(-32768, min(32767, dx))
+                dy = max(-32768, min(32767, dy))
+                
+                # Send directly - HID supports 16-bit values!
+                mouse.move(dx, dy)
+                
+                send_execution_feedback("MOUSE_MOVE_REL", "success", 0)
+            except ValueError:
+                send_execution_feedback("MOUSE_MOVE_REL", "error", 0, error="Invalid coordinates")
+    elif line.startswith("SCROLL_UP"):
+        mouse.move(wheel=1)
+    elif line.startswith("SCROLL_DOWN"):
+        mouse.move(wheel=-1)
+    elif line.startswith("MOUSE_PRESS "):
+        # Format: MOUSE_PRESS LEFT/RIGHT/MIDDLE
+        button = line[12:].strip().upper()
+        if button == "LEFT":
+            mouse.press(Mouse.LEFT_BUTTON)
+        elif button == "RIGHT":
+            mouse.press(Mouse.RIGHT_BUTTON)
+        elif button == "MIDDLE":
+            mouse.press(Mouse.MIDDLE_BUTTON)
+        else:
+            print(f"Unknown mouse button: {button}")
+    elif line.startswith("MOUSE_RELEASE "):
+        # Format: MOUSE_RELEASE LEFT/RIGHT/MIDDLE
+        button = line[14:].strip().upper()
+        if button == "LEFT":
+            mouse.release(Mouse.LEFT_BUTTON)
+        elif button == "RIGHT":
+            mouse.release(Mouse.RIGHT_BUTTON)
+        elif button == "MIDDLE":
+            mouse.release(Mouse.MIDDLE_BUTTON)
+        else:
+            print(f"Unknown mouse button: {button}")
+    # ===== MOUSE COMMANDS END HERE =====
     elif line[0:5] == "DELAY":
         # Support for DELAY500 (no space) or DELAY 500 (with space)
         match = re.match(r"DELAY\s*(\d+)", line)
@@ -263,6 +381,7 @@ def parseLine(line, script_lines):
             sendString(random.choice(letters + letters.upper() + numbers + specialChars))
     elif line == "RESET":
         kbd.release_all()
+        mouse.release_all()
     elif line in functions:
         for func_line in functions[line]:
             parseLine(func_line, iter(functions[line]))
@@ -301,10 +420,91 @@ def run_ducky_script_from_string(script_str):
 # ---- UART receiver and executor ----
 uart = busio.UART(board.GP0, board.GP1, baudrate=115200, timeout=0.5)  # RX, TX
 
+# Update send_execution_feedback to use uart
+def send_execution_feedback_uart(command, status, execution_time=0, progress=None, error=None):
+    """Send feedback to ESP01 about command execution via UART"""
+    global uart
+    
+    if progress:
+        # Progress update
+        feedback = f"PICO_PROGRESS:{progress}"
+    elif error:
+        # Error notification
+        feedback = f"PICO_ERROR:{error}"
+    else:
+        # Completion notification
+        feedback_data = {
+            "command": command,
+            "status": status,
+            "execution_time": execution_time
+        }
+        feedback = f"PICO_DONE:{json.dumps(feedback_data)}"
+    
+    try:
+        uart.write(feedback.encode('utf-8'))
+        uart.write(b'\n')
+        print(f"📤 Sent feedback: {feedback}")
+    except Exception as e:
+        print(f"❌ Failed to send feedback: {e}")
+
+# Override the placeholder function with the real one
+send_execution_feedback = send_execution_feedback_uart
+
+# ---- In-memory Ducky runner ----
+def run_ducky_script_from_string(script_str):
+    global defaultDelay, execution_start_time
+    restart = True
+    lines = script_str.splitlines()
+    
+    print(f"🚀 Starting script execution: {len(lines)} lines")
+    send_execution_feedback("SCRIPT_START", "started", 0, progress=f"Processing {len(lines)} commands")
+    
+    start_time = time.monotonic()
+    
+    while restart:
+        restart = False
+        script_lines = iter(lines)
+        previousLine = ""
+        line_count = 0
+        
+        for line in script_lines:
+            clean_line = line.split('#', 1)[0].strip()
+            if clean_line == "":
+                continue
+                
+            line_count += 1
+            execution_start_time = time.monotonic()
+            
+            if clean_line[0:6] == "REPEAT":
+                for i in range(int(clean_line[7:])):
+                    parseLine(previousLine, iter([]))
+            elif clean_line.startswith("RESTART_PAYLOAD"):
+                restart = True
+                break
+            elif clean_line.startswith("STOP_PAYLOAD"):
+                break
+            else:
+                parseLine(clean_line, script_lines)
+                previousLine = clean_line
+            time.sleep(float(defaultDelay) / 1000)
+    
+    total_time = int((time.monotonic() - start_time) * 1000)
+    print(f"✅ Script execution completed: {line_count} commands in {total_time}ms")
+    send_execution_feedback("SCRIPT_COMPLETE", "completed", total_time, progress=f"All {line_count} commands executed")
+
 def receive_and_execute():
     buffer = b""
-    print("Ready to receive and execute ducky scripts over UART.")
-    print("Deduplication logic is handled by ESP device.")
+    print("="*80)
+    print("🚀 RASPBERRY PI PICO - NORMALIZED COORDINATE MOUSE")
+    print("="*80)
+    print("Coordinate System: -32767 to 32767 (backend handles conversion)")
+    print("")
+    print("Commands:")
+    print("  MOUSE_MOVE x y        - Absolute move (x,y: -32767 to 32767)")
+    print("  MOUSE_MOVE_REL dx dy  - Relative move (any value, auto-chunked)")
+    print("  MOUSE_CALIBRATE       - Reset to origin")
+    print("  CLICK/RIGHTCLICK      - Mouse clicks")
+    print("="*80)
     while True:
         b = uart.read(1)
         if b:

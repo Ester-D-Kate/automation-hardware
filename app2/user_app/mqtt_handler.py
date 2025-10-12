@@ -3,29 +3,27 @@ MQTT client handler
 """
 
 import asyncio
-import sys
-sys.path.insert(0, '../app')
-from constants import MQTT_BROKER, MQTT_PORT
 import paho.mqtt.client as mqtt
+from constants import MQTT_BROKER, MQTT_PORT
 
 
 class MQTTHandler:
     def __init__(self, on_message_callback=None):
-        self.mqtt_client = mqtt.Client()
+        self.mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.mqtt_client.on_connect = self._on_connect
         self.mqtt_client.on_message = self._on_message
         self.is_connected = False
         self.on_message_callback = on_message_callback
         
-    def _on_connect(self, client, userdata, flags, rc):
-        if rc == 0:
+    def _on_connect(self, client, userdata, flags, reason_code, properties):
+        if reason_code == 0:
             self.is_connected = True
             print("✅ Connected to MQTT broker")
             client.subscribe("LDrago_windows/get_mouse_position")
             client.subscribe("LDrago_windows/get_device_info")
             print("📡 Subscribed to request topics")
         else:
-            print(f"❌ MQTT connection failed: {rc}")
+            print(f"❌ MQTT connection failed: {reason_code}")
     
     def _on_message(self, client, userdata, msg):
         if self.on_message_callback:

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
     <title>Alice AI Assistant</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -13,11 +13,58 @@
             background-color: #f3f4f6; /* Light gray background */
             color: #1f2937; /* Dark gray text */
             transition: background-color 0.3s ease, color 0.3s ease;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            overscroll-behavior: contain;
         }
         .container {
             max-width: 800px;
             background-color: #ffffff; /* White background for container */
             transition: background-color 0.3s ease;
+            margin: 0 auto;
+            width: 100%;
+            min-height: calc(100vh - 2rem);
+        }
+        
+        /* Mobile specific styles */
+        .mobile-device .container {
+            box-shadow: none;
+        }
+        
+        @media (max-width: 640px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+                min-height: 100vh;
+                padding: 1rem;
+            }
+            
+            h1 {
+                font-size: 1.75rem;
+                margin-bottom: 1.5rem;
+            }
+            
+            .button-group {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .button-group button {
+                width: 100%;
+                padding: 1rem 2rem;
+                font-size: 1.1rem;
+                min-height: 60px;
+                border-radius: 12px;
+                font-weight: 600;
+            }
+            
+            .button-group button:active {
+                transform: scale(0.98);
+            }
         }
         .script-display {
             background-color: #f3f4f6; /* Light gray for script display */
@@ -94,6 +141,189 @@
         html.dark #theme-toggle:hover {
             background-color: #718096;
         }
+        
+        /* Mobile touch styles */
+        @media (max-width: 768px) {
+            button {
+                -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+                touch-action: manipulation;
+            }
+            
+            .script-display {
+                max-height: 150px;
+                font-size: 0.9rem;
+            }
+            
+            #theme-toggle {
+                top: 1rem;
+                right: 1rem;
+                padding: 0.75rem;
+            }
+        }
+        
+        /* Prevent zoom on input focus for iOS */
+        @media screen and (-webkit-min-device-pixel-ratio: 0) {
+            select, textarea, input[type="text"], input[type="password"], 
+            input[type="datetime"], input[type="datetime-local"], 
+            input[type="date"], input[type="month"], input[type="time"], 
+            input[type="week"], input[type="number"], input[type="email"], 
+            input[type="url"] {
+                font-size: 16px;
+            }
+        }
+        
+        /* Recording animation */
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+            70% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
+        
+        /* Loading spinner animation */
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+        
+        .flex {
+            display: flex;
+        }
+        
+        .items-center {
+            align-items: center;
+        }
+        
+        .justify-center {
+            justify-content: center;
+        }
+        
+        .gap-2 {
+            gap: 0.5rem;
+        }
+        
+        .h-4 {
+            height: 1rem;
+        }
+        
+        .w-4 {
+            width: 1rem;
+        }
+        
+        .border-b-2 {
+            border-bottom-width: 2px;
+        }
+        
+        .border-blue-600 {
+            border-color: #2563eb;
+        }
+        
+        .rounded-full {
+            border-radius: 9999px;
+        }
+        
+        .text-red-600 {
+            color: #dc2626;
+        }
+        
+        .font-semibold {
+            font-weight: 600;
+        }
+        
+        .mb-2 {
+            margin-bottom: 0.5rem;
+        }
+        
+        .text-sm {
+            font-size: 0.875rem;
+        }
+        
+        .text-xs {
+            font-size: 0.75rem;
+        }
+        
+        .text-gray-600 {
+            color: #4b5563;
+        }
+        
+        .space-y-1 > * + * {
+            margin-top: 0.25rem;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        code {
+            background-color: #f3f4f6;
+            padding: 0.125rem 0.25rem;
+            border-radius: 0.25rem;
+            font-family: monospace;
+            font-size: 0.875rem;
+        }
+        
+        html.dark code {
+            background-color: #374151;
+            color: #e5e7eb;
+        }
+        
+        /* Improved mobile accessibility */
+        @media (max-width: 480px) {
+            .container {
+                padding: 0.75rem;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            .script-display {
+                font-size: 0.85rem;
+                padding: 0.75rem;
+                max-height: 120px;
+            }
+            
+            #status-message {
+                font-size: 0.9rem;
+                padding: 0.5rem;
+                margin: 0.75rem 0;
+            }
+        }
+        
+        /* Safe area handling for notched devices */
+        @supports (padding-top: constant(safe-area-inset-top)) {
+            .container {
+                padding-top: constant(safe-area-inset-top);
+                padding-left: constant(safe-area-inset-left);
+                padding-right: constant(safe-area-inset-right);
+                padding-bottom: constant(safe-area-inset-bottom);
+            }
+        }
+        
+        @supports (padding-top: env(safe-area-inset-top)) {
+            .container {
+                padding-top: env(safe-area-inset-top);
+                padding-left: env(safe-area-inset-left);
+                padding-right: env(safe-area-inset-right);
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+        }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4">
@@ -137,19 +367,19 @@
             </div>
         </div>
 
-        <div class="flex flex-col sm:flex-row justify-center items-center gap-4 mt-8">
-            <div class="flex flex-col items-center">
-                <button id="record-button" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-full shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
-                    Start Recording
+        <div class="button-group flex flex-col sm:flex-row justify-center items-center gap-4 mt-8">
+            <div class="flex flex-col items-center w-full sm:w-auto">
+                <button id="record-button" class="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-3 px-8 rounded-full shadow-md transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 w-full sm:w-auto">
+                    🎤 Start Recording
                 </button>
-                <p class="text-sm text-gray-500 mt-2">Click to start/stop recording.</p>
+                <p class="text-sm text-gray-500 mt-2 text-center">Tap to start/stop recording</p>
             </div>
 
-            <div class="flex flex-col items-center">
-                <button id="send-script-button" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-8 rounded-full shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                    Execute Commands
+            <div class="flex flex-col items-center w-full sm:w-auto">
+                <button id="send-script-button" class="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold py-3 px-8 rounded-full shadow-md transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto" disabled>
+                    ⚡ Execute Commands
                 </button>
-                <p class="text-sm text-gray-500 mt-2">Review before executing.</p>
+                <p class="text-sm text-gray-500 mt-2 text-center">Review before executing</p>
             </div>
         </div>
     </div>
@@ -225,6 +455,123 @@
             applyTheme('light'); // Default to light mode
         }
 
+        // --- Mobile Initialization ---
+        /**
+         * Initialize mobile-specific features and check permissions
+         */
+        async function initializeMobileFeatures() {
+            // Check if we're on a mobile device
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            if (isMobile) {
+                // Add mobile-specific class for styling
+                document.body.classList.add('mobile-device');
+                
+                // Check microphone permission status
+                if (navigator.permissions) {
+                    try {
+                        const permission = await navigator.permissions.query({ name: 'microphone' });
+                        updatePermissionStatus(permission.state);
+                        
+                        // Listen for permission changes
+                        permission.onchange = () => {
+                            updatePermissionStatus(permission.state);
+                        };
+                    } catch (error) {
+                        console.log('Permission API not supported:', error);
+                    }
+                }
+                
+                // Prevent pull-to-refresh on mobile
+                document.body.addEventListener('touchstart', e => {
+                    if (e.touches.length > 1) {
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+                
+                document.body.addEventListener('touchend', e => {
+                    const now = (new Date()).getTime();
+                    if (now - lastTouchEnd <= 300) {
+                        e.preventDefault();
+                    }
+                    lastTouchEnd = now;
+                }, false);
+            }
+            
+            // Check audio support and update UI accordingly
+            const supportCheck = checkAudioSupport();
+            if (!supportCheck.supported) {
+                if (supportCheck.isHttpsIssue) {
+                    statusMessage.innerHTML = `
+                        <div class="text-center">
+                            <p class="text-red-600 font-semibold mb-2">🔒 HTTPS Required for Mobile Microphone Access</p>
+                            <p class="text-sm mb-2">Mobile browsers require HTTPS for security.</p>
+                            <div class="text-xs text-gray-600 space-y-1">
+                                <p><strong>Solutions:</strong></p>
+                                <p>1. Use <code>https://</code> instead of <code>http://</code></p>
+                                <p>2. Access via <code>localhost</code> on the same device</p>
+                                <p>3. Set up SSL certificate for your server</p>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    statusMessage.textContent = `Audio not supported: ${supportCheck.reason}`;
+                }
+                recordButton.disabled = true;
+                recordButton.innerHTML = '🔒 HTTPS Required';
+                recordButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                recordButton.classList.add('bg-red-600', 'hover:bg-red-700');
+            }
+        }
+
+        let lastTouchEnd = 0;
+
+        /**
+         * Update UI based on microphone permission status
+         */
+        function updatePermissionStatus(state) {
+            switch (state) {
+                case 'granted':
+                    statusMessage.textContent = 'Microphone ready! Tap to start recording.';
+                    break;
+                case 'denied':
+                    statusMessage.textContent = 'Microphone access denied. Please enable in browser settings.';
+                    break;
+                case 'prompt':
+                    statusMessage.textContent = 'Microphone permission required. Tap record to allow access.';
+                    break;
+                default:
+                    statusMessage.textContent = 'Ready to record audio commands.';
+            }
+        }
+
+        // Initialize mobile features when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initializeMobileFeatures);
+
+        // Add connection status monitoring for mobile networks
+        function updateConnectionStatus() {
+            if (navigator.onLine) {
+                if (statusMessage.textContent.includes('offline')) {
+                    statusMessage.textContent = 'Connection restored! Ready to record.';
+                }
+            } else {
+                statusMessage.textContent = 'You are offline. Please check your internet connection.';
+                recordButton.disabled = true;
+                sendScriptButton.disabled = true;
+            }
+        }
+
+        // Listen for connection changes (important for mobile)
+        window.addEventListener('online', () => {
+            recordButton.disabled = false;
+            updateConnectionStatus();
+        });
+
+        window.addEventListener('offline', updateConnectionStatus);
+
+        // Initialize connection status
+        updateConnectionStatus();
+
         // --- Event Listeners ---
         themeToggle.addEventListener('click', toggleTheme);
 
@@ -243,43 +590,135 @@
         // --- Functions ---
 
         /**
+         * Checks if the device supports audio recording
+         */
+        function checkAudioSupport() {
+            // Check if we're on HTTPS or localhost
+            const isSecureContext = window.isSecureContext || location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+            
+            if (!isSecureContext) {
+                return { 
+                    supported: false, 
+                    reason: 'HTTPS required for microphone access on mobile devices',
+                    isHttpsIssue: true 
+                };
+            }
+            
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                return { 
+                    supported: false, 
+                    reason: 'MediaDevices API not supported in this browser',
+                    isHttpsIssue: false 
+                };
+            }
+            if (!window.MediaRecorder) {
+                return { 
+                    supported: false, 
+                    reason: 'MediaRecorder API not supported in this browser',
+                    isHttpsIssue: false 
+                };
+            }
+            return { supported: true };
+        }
+
+        /**
          * Starts the audio recording process.
          * Requests microphone access and initializes MediaRecorder.
          */
         async function startRecording() {
+            // Check browser support first
+            const supportCheck = checkAudioSupport();
+            if (!supportCheck.supported) {
+                statusMessage.textContent = `Error: ${supportCheck.reason}. Please use a modern browser.`;
+                return;
+            }
+
             try {
-                // Request access to the user's microphone
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
+                // Show permission request message for mobile
+                statusMessage.textContent = 'Requesting microphone permission...';
+                
+                // Request access to the user's microphone with mobile-friendly constraints
+                const constraints = {
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true,
+                        // Mobile-specific optimizations
+                        sampleRate: 16000,
+                        channelCount: 1
+                    }
+                };
+
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                
+                // Determine the best audio format for the device
+                let mimeType = 'audio/webm';
+                if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                    mimeType = 'audio/webm;codecs=opus';
+                } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                    mimeType = 'audio/mp4';
+                } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+                    mimeType = 'audio/ogg;codecs=opus';
+                }
+
+                mediaRecorder = new MediaRecorder(stream, { mimeType });
                 audioChunks = []; // Clear previous audio chunks
 
                 // Event listener for when audio data is available
                 mediaRecorder.ondataavailable = event => {
-                    audioChunks.push(event.data);
+                    if (event.data && event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
                 };
 
                 // Event listener for when recording stops
                 mediaRecorder.onstop = () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' }); // Create a Blob from collected chunks
+                    if (audioChunks.length === 0) {
+                        statusMessage.textContent = 'No audio was recorded. Please try again.';
+                        return;
+                    }
+                    
+                    const audioBlob = new Blob(audioChunks, { type: mimeType });
                     sendAudioToAI(audioBlob); // Send the audio to the AI server
+                    
                     // Stop all tracks in the stream to release microphone
                     stream.getTracks().forEach(track => track.stop());
                 };
 
-                mediaRecorder.start(); // Start recording
+                // Start recording with error handling
+                mediaRecorder.start(100); // Collect data every 100ms
                 isRecording = true;
-                recordButton.textContent = 'Stop Recording';
-                recordButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-                recordButton.classList.add('bg-red-600', 'hover:bg-red-700');
-                statusMessage.textContent = 'Recording... Click again to stop.';
+                recordButton.innerHTML = '🔴 Stop Recording';
+                recordButton.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'active:bg-blue-800');
+                recordButton.classList.add('bg-red-600', 'hover:bg-red-700', 'active:bg-red-800');
+                statusMessage.textContent = 'Recording... Tap again to stop.';
                 responseDisplay.textContent = 'Recording started... Waiting for AI response.';
                 sendScriptButton.disabled = true; // Disable send button while recording/waiting
+                
+                // Add visual feedback for recording
+                recordButton.style.animation = 'pulse 1s infinite';
+                
             } catch (error) {
                 console.error('Error accessing microphone:', error);
-                statusMessage.textContent = 'Error: Could not access microphone. Please check permissions.';
-                recordButton.classList.remove('bg-red-600', 'hover:bg-red-700');
-                recordButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
-                recordButton.textContent = 'Start Recording';
+                
+                let errorMessage = 'Could not access microphone. ';
+                if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                    errorMessage += 'Please allow microphone access and try again.';
+                } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                    errorMessage += 'No microphone found on this device.';
+                } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+                    errorMessage += 'Microphone is being used by another application.';
+                } else if (error.name === 'OverconstrainedError' || error.name === 'ConstraintNotSatisfiedError') {
+                    errorMessage += 'Microphone constraints not supported.';
+                } else {
+                    errorMessage += 'Please check your device settings.';
+                }
+                
+                statusMessage.textContent = errorMessage;
+                recordButton.classList.remove('bg-red-600', 'hover:bg-red-700', 'active:bg-red-800');
+                recordButton.classList.add('bg-blue-600', 'hover:bg-blue-700', 'active:bg-blue-800');
+                recordButton.innerHTML = '🎤 Start Recording';
+                recordButton.style.animation = '';
                 isRecording = false;
             }
         }
@@ -291,11 +730,25 @@
             if (mediaRecorder && mediaRecorder.state === 'recording') {
                 mediaRecorder.stop(); // This will trigger the onstop event
                 isRecording = false;
-                recordButton.textContent = 'Start Recording';
-                recordButton.classList.remove('bg-red-600', 'hover:bg-red-700');
-                recordButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                recordButton.innerHTML = '🎤 Start Recording';
+                recordButton.classList.remove('bg-red-600', 'hover:bg-red-700', 'active:bg-red-800');
+                recordButton.classList.add('bg-blue-600', 'hover:bg-blue-700', 'active:bg-blue-800');
+                recordButton.style.animation = '';
                 statusMessage.textContent = 'Recording stopped. Sending audio to AI...';
             }
+        }
+
+        /**
+         * Shows a loading indicator
+         */
+        function showLoading(message) {
+            statusMessage.textContent = message || 'Processing...';
+            statusMessage.innerHTML = `
+                <div class="flex items-center justify-center gap-2">
+                    <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span>${message || 'Processing...'}</span>
+                </div>
+            `;
         }
 
         /**
@@ -304,17 +757,43 @@
          * @param {Blob} audioBlob - The recorded audio data.
          */
         async function sendAudioToAI(audioBlob) {
+            // Validate audio blob
+            if (!audioBlob || audioBlob.size === 0) {
+                statusMessage.textContent = 'No audio recorded. Please try again.';
+                return;
+            }
+
+            showLoading('Sending audio to AI...');
+            
             const formData = new FormData();
-            formData.append('audio_file', audioBlob, 'audio.webm');
+            // Use the actual mime type of the recorded blob
+            const fileName = `audio.${audioBlob.type.includes('mp4') ? 'mp4' : 'webm'}`;
+            formData.append('audio_file', audioBlob, fileName);
 
             try {
+                // Add timeout for mobile networks
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
                 const response = await fetch(AI_SERVER_URL, {
                     method: 'POST',
                     body: formData,
+                    signal: controller.signal,
                 });
 
+                clearTimeout(timeoutId);
+
                 if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
+                    let errorMessage = `Server error (${response.status})`;
+                    try {
+                        const errorData = await response.text();
+                        if (errorData) {
+                            errorMessage += `: ${errorData}`;
+                        }
+                    } catch (e) {
+                        // Ignore JSON parse errors for error responses
+                    }
+                    throw new Error(errorMessage);
                 }
 
                 // Changed from .text() to .json() to match our updated backend
@@ -324,7 +803,7 @@
                 // Display the different parts of the response
                 displayAIResponse(responseData);
                 
-                statusMessage.textContent = 'AI response received! Review before executing commands.';
+                statusMessage.textContent = '✅ AI response received! Review before executing commands.';
                 
                 // Enable or disable the execute button based on whether there are commands to execute
                 sendScriptButton.disabled = !(responseData.output_ducky_script || 
@@ -332,8 +811,18 @@
                 
             } catch (error) {
                 console.error('Error sending audio to AI server:', error);
-                statusMessage.textContent = `Error sending audio to AI: ${error.message}. Please try again.`;
-                responseDisplay.textContent = 'Failed to get AI response.';
+                
+                let errorMessage = 'Failed to process audio. ';
+                if (error.name === 'AbortError') {
+                    errorMessage += 'Request timed out. Please check your connection and try again.';
+                } else if (error.message.includes('Failed to fetch')) {
+                    errorMessage += 'Cannot connect to server. Please check your internet connection.';
+                } else {
+                    errorMessage += error.message;
+                }
+                
+                statusMessage.textContent = `❌ ${errorMessage}`;
+                responseDisplay.textContent = 'Failed to get AI response. Please try recording again.';
                 sendScriptButton.disabled = true;
             }
         }
