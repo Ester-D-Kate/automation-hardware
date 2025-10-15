@@ -3,19 +3,29 @@ Complete Device Information Extractor (Async Version)
 Extracts every detail about monitors, resolution, layout, and system info
 All functions are async for integration with automation systems
 """
-
 import pyautogui
 import platform
 import sys
 from typing import List, Dict, Tuple
 import json
 import asyncio
+from app_info import get_applications_info as get_all_applications_with_windows
 
 
 async def get_primary_monitor_info() -> Dict:
     size = await asyncio.to_thread(pyautogui.size)
     return {"name": "primary", "width": size.width, "height": size.height,
             "x": 0, "y": 0, "is_primary": True}
+
+
+async def get_applications_info(monitors_info: Dict) -> Dict:
+    """
+    Get all running UI applications with their windows and coordinates.
+    Only called when user requests it via MQTT.
+    """
+    monitors_list = monitors_info.get("list", [])
+    return get_all_applications_with_windows(monitors_list) 
+
 
 async def get_all_monitors_info() -> List[Dict]:
     monitors = []

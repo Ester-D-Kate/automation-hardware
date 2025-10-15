@@ -1,6 +1,6 @@
 """
-Cursor Controller - SAFE with Proper Hardware Feedback
-CRITICAL: Wait for Pico execution feedback before checking position
+Cursor Controller - Hardware Rubber Ducky with Full Calibration
+SAFE controller with proper hardware feedback waiting
 """
 
 import asyncio
@@ -10,11 +10,19 @@ import time
 from pathlib import Path
 from datetime import datetime
 import pyautogui
-
-# Disable fail-safe to allow corner coordinates
-pyautogui.FAILSAFE = False
-
 from device_info import extract_complete_device_info
+from constants import (
+    MQTT_BROKER,
+    MQTT_PORT,
+    MQTT_USERNAME,
+    MQTT_PASSWORD,
+    MQTT_TOPIC_COMMAND,
+    MQTT_TOPIC_FEEDBACK,
+    PYAUTOGUI_FAILSAFE
+)
+
+# Use constant
+pyautogui.FAILSAFE = PYAUTOGUI_FAILSAFE
 
 
 class MonitorManager:
@@ -33,7 +41,6 @@ class MonitorManager:
         self.virtual_desktop = device_info.get('virtual_desktop', {})
         self.bridge_points = device_info.get('bridge_points', [])
         
-        # Find primary monitor
         self.primary_monitor = next((m for m in self.monitors if m.get('primary')), None)
         if not self.primary_monitor:
             self.primary_monitor = max(self.monitors, key=lambda m: m['width'] * m['height'])
@@ -50,12 +57,10 @@ class MonitorManager:
     def is_near_edge(self, pos, monitor, threshold=100):
         """Check if position is near monitor edge"""
         x, y = pos
-        
         near_left = (x - monitor['x']) < threshold
         near_right = (monitor['x'] + monitor['width'] - x) < threshold
         near_top = (y - monitor['y']) < threshold
         near_bottom = (monitor['y'] + monitor['height'] - y) < threshold
-        
         return near_left or near_right or near_top or near_bottom
 
 
@@ -64,24 +69,27 @@ class HardwareInterface:
     
     def __init__(self):
         import paho.mqtt.client as mqtt
-        self.mqtt_client = mqtt.Client(client_id=f"CursorController-{int(time.time())}")
-        self.mqtt_client.username_pw_set("LDrago_windows", "E1s2t3e4r5")
+        self.mqtt_client = mqtt.Client(
+            mqtt.CallbackAPIVersion.VERSION2,
+            client_id=f"CursorController-{int(time.time())}"
+        )
+        self.mqtt_client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
         self.mqtt_client.on_message = self._on_message
         self.feedback_received = False
         self.last_feedback = None
         self.is_connected = False
         
-        def on_connect(client, userdata, flags, rc):
-            if rc == 0:
+        def on_connect(client, userdata, flags, reason_code, properties):
+            if reason_code == 0:
                 self.is_connected = True
-                client.subscribe("LDrago_windows/pico_execution_done")
+                client.subscribe(MQTT_TOPIC_FEEDBACK)
         
         self.mqtt_client.on_connect = on_connect
     
     def connect(self):
         """Connect to MQTT broker"""
         try:
-            self.mqtt_client.connect("broker.emqx.io", 1883, 60)
+            self.mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
             self.mqtt_client.loop_start()
             time.sleep(2)
             return self.is_connected
@@ -98,19 +106,17 @@ class HardwareInterface:
             self.last_feedback = msg.payload.decode()
     
     def send_command_and_wait(self, command, timeout=2):
-        """
-        Send command and WAIT for Pico feedback
-        Returns True if feedback received
-        """
+        """Send command and WAIT for Pico feedback"""
         self.feedback_received = False
         self.last_feedback = None
         
         payload = {
             "script": command,
-            "password": "E1s2t3e4r5",
+            "password": MQTT_PASSWORD,
             "repeat": True
         }
-        self.mqtt_client.publish("LDrago_windows/ducky_script", json.dumps(payload))
+        
+        self.mqtt_client.publish(MQTT_TOPIC_COMMAND, json.dumps(payload))
         
         # Wait for feedback
         start = time.time()
@@ -119,7 +125,7 @@ class HardwareInterface:
                 return True
             time.sleep(0.01)
         
-        print(f"      ⚠️ No feedback received for: {command}")
+        print(f"  ⚠️ No feedback received for: {command}")
         return False
     
     def disconnect(self):
@@ -129,9 +135,7 @@ class HardwareInterface:
 
 
 class SafeAdaptiveController:
-    """
-    SAFE controller with proper hardware feedback waiting
-    """
+    """SAFE controller with proper hardware feedback waiting"""
     
     def __init__(self, hardware, monitor_manager):
         self.hardware = hardware
@@ -157,18 +161,13 @@ class SafeAdaptiveController:
         """Reset cursor to safe starting position"""
         safe_x = self.monitor_manager.primary_monitor['x'] + 300
         safe_y = self.monitor_manager.primary_monitor['y'] + 300
-        
         pyautogui.moveTo(safe_x, safe_y, duration=0.1)
-        time.sleep(0.3)  # Extra time for pyautogui
-        
+        time.sleep(0.3)
         actual = pyautogui.position()
         return actual
     
     def test_hid_with_feedback(self, hid_value, expected_distance):
-        """
-        Test HID value with PROPER feedback waiting
-        Returns (actual_distance, overshot, jumped)
-        """
+        """Test HID value with PROPER feedback waiting"""
         before_pos = pyautogui.position()
         before_monitor = self.monitor_manager.find_monitor_at_position(before_pos)
         
@@ -176,12 +175,10 @@ class SafeAdaptiveController:
         feedback_received = self.hardware.send_command_and_wait(f"MOUSE_MOVE_REL {hid_value} 0", timeout=2)
         
         if not feedback_received:
-            print(f"      ⚠️ No feedback for HID {hid_value}, assuming it failed")
+            print(f"  ⚠️ No feedback for HID {hid_value}")
             return 0, False, False
         
-        # Small extra delay to ensure OS processed the HID input
         time.sleep(0.05)
-        
         after_pos = pyautogui.position()
         after_monitor = self.monitor_manager.find_monitor_at_position(after_pos)
         
@@ -192,38 +189,30 @@ class SafeAdaptiveController:
         return actual_movement, overshot, monitor_jumped
     
     def binary_search_safe_hid(self, target_distance):
-        """
-        Binary search with proper feedback waiting
-        """
-        print(f"\n   🔍 Finding safe HID for {target_distance}px...")
-        
-        low = 5  # Start higher since very small values unreliable
-        high = 80  # Conservative max
+        """Binary search with proper feedback waiting"""
+        print(f"\n  🔍 Finding safe HID for {target_distance}px...")
+        low = 5
+        high = 80
         best_safe_hid = 5
-        
         iteration = 0
+        
         while low <= high and iteration < 10:
             iteration += 1
             mid = (low + high) // 2
             
-            # Reset
             self.reset_cursor_position()
             time.sleep(0.2)
             
-            # Test with feedback
             actual_movement, overshot, jumped = self.test_hid_with_feedback(mid, target_distance)
-            
-            print(f"      Iter {iteration}: HID={mid} → {actual_movement}px (target ≤{target_distance}px) | Jump: {jumped}")
+            print(f"  Iter {iteration}: HID={mid} → {actual_movement}px (target ≤{target_distance}px) | Jump: {jumped}")
             
             if actual_movement == 0:
-                # No movement detected - command might have failed
-                print(f"      ⚠️ No movement detected for HID {mid}")
-                # Try a bit higher
+                print(f"  ⚠️ No movement detected for HID {mid}")
                 low = mid + 1
                 continue
             
             if jumped:
-                print(f"      ⚠️ MONITOR JUMP!")
+                print(f"  ⚠️ MONITOR JUMP!")
                 high = mid - 1
                 continue
             
@@ -233,7 +222,7 @@ class SafeAdaptiveController:
                 best_safe_hid = mid
                 low = mid + 1
         
-        print(f"      ✅ Safe HID for {target_distance}px = {best_safe_hid}")
+        print(f"  ✅ Safe HID for {target_distance}px = {best_safe_hid}")
         return best_safe_hid
     
     def comprehensive_calibration(self):
@@ -243,7 +232,6 @@ class SafeAdaptiveController:
         print("="*80)
         
         test_distances = [50, 100, 200, 300, 500]
-        
         print(f"\n📊 Testing {len(test_distances)} distances")
         input("\n⏸️  Press Enter to start...")
         
@@ -254,7 +242,7 @@ class SafeAdaptiveController:
         
         print(f"\n📊 RESULTS:")
         for d in sorted(self.distance_to_max_hid.keys()):
-            print(f"   {d}px → HID {self.distance_to_max_hid[d]}")
+            print(f"  {d}px → HID {self.distance_to_max_hid[d]}")
         
         self.save_calibration()
         print(f"\n✅ CALIBRATION COMPLETE!")
@@ -279,30 +267,25 @@ class SafeAdaptiveController:
             if distances[i] <= distance <= distances[i+1]:
                 d1, d2 = distances[i], distances[i+1]
                 h1, h2 = self.distance_to_max_hid[d1], self.distance_to_max_hid[d2]
-                
                 ratio = (distance - d1) / (d2 - d1)
                 interpolated = h1 + ratio * (h2 - h1)
-                
-                # 60% safety margin
                 return max(5, int(interpolated * 0.6))
         
         return max(5, int(distance * 0.08))
     
     def safe_move_to(self, target_x, target_y, tolerance=15, max_iterations=300):
-        """
-        Safe movement with feedback waiting
-        """
+        """Safe movement with feedback waiting"""
         start_time = time.time()
         start_pos = pyautogui.position()
         
         print(f"\n🎯 Safe move to ({target_x}, {target_y})")
-        print(f"   Starting from ({start_pos[0]}, {start_pos[1]})")
+        print(f"  Starting from ({start_pos[0]}, {start_pos[1]})")
         
         start_monitor = self.monitor_manager.find_monitor_at_position(start_pos)
         target_monitor = self.monitor_manager.find_monitor_at_position((target_x, target_y))
         
         if start_monitor['name'] != target_monitor['name']:
-            print(f"   ⚠️ TARGET ON DIFFERENT MONITOR - BLOCKED")
+            print(f"  ⚠️ TARGET ON DIFFERENT MONITOR - BLOCKED")
             return False
         
         last_good_pos = start_pos
@@ -312,85 +295,75 @@ class SafeAdaptiveController:
             current_pos = pyautogui.position()
             current_monitor = self.monitor_manager.find_monitor_at_position(current_pos)
             
-            # Check monitor
             if current_monitor['name'] != target_monitor['name']:
-                print(f"   ⚠️ JUMPED TO DIFFERENT MONITOR! Recovering...")
+                print(f"  ⚠️ JUMPED TO DIFFERENT MONITOR! Recovering...")
                 pyautogui.moveTo(last_good_pos[0], last_good_pos[1], duration=0.1)
                 time.sleep(0.3)
                 self.overshoot_count += 1
                 continue
             
-            # Distance
             dx = target_x - current_pos[0]
             dy = target_y - current_pos[1]
             distance = math.sqrt(dx**2 + dy**2)
             
-            # Arrived?
             if distance <= tolerance:
                 elapsed = time.time() - start_time
                 total_dist = math.sqrt((current_pos[0]-start_pos[0])**2 + (current_pos[1]-start_pos[1])**2)
                 speed = total_dist / elapsed if elapsed > 0 else 0
-                print(f"   ✅ ARRIVED in {iteration} steps, {elapsed:.2f}s, {speed:.0f}px/s")
+                print(f"  ✅ ARRIVED in {iteration} steps, {elapsed:.2f}s, {speed:.0f}px/s")
                 self.successful_movements += 1
                 self.total_movements += 1
                 return True
             
-            # Near edge?
             if self.monitor_manager.is_near_edge(current_pos, current_monitor, 120):
                 safe_hid = min(5, self.get_safe_hid_for_distance(distance))
             else:
                 safe_hid = self.get_safe_hid_for_distance(distance)
             
-            # Direction
             direction_x = dx / distance
             direction_y = dy / distance
             
             hid_x = int(direction_x * safe_hid)
             hid_y = int(direction_y * safe_hid)
             
-            # Minimum move
             if hid_x == 0 and hid_y == 0 and distance > tolerance:
                 hid_x = 1 if dx > 0 else -1 if dx < 0 else 0
                 hid_y = 1 if dy > 0 else -1 if dy < 0 else 0
             
-            # Log
             if iteration % 20 == 1 or distance < 100:
-                print(f"   Step {iteration}: ({current_pos[0]}, {current_pos[1]}) | {distance:.1f}px | HID: ({hid_x}, {hid_y})")
+                print(f"  Step {iteration}: ({current_pos[0]}, {current_pos[1]}) | {distance:.1f}px | HID: ({hid_x}, {hid_y})")
             
-            # Remember position
             last_good_pos = current_pos
             
-            # Execute with feedback
             before = pyautogui.position()
             feedback = self.hardware.send_command_and_wait(f"MOUSE_MOVE_REL {hid_x} {hid_y}", timeout=1.5)
             
             if not feedback:
-                print(f"   ⚠️ No feedback at step {iteration}")
+                print(f"  ⚠️ No feedback at step {iteration}")
                 no_move_counter += 1
                 if no_move_counter > 10:
-                    print(f"   ❌ Too many failed commands")
+                    print(f"  ❌ Too many failed commands")
                     return False
                 time.sleep(0.1)
                 continue
             
-            time.sleep(0.01)  # Small delay after feedback
+            time.sleep(0.01)
             
-            # Check if actually moved
             after = pyautogui.position()
             if before == after and distance > tolerance:
                 no_move_counter += 1
                 if no_move_counter > 10:
-                    print(f"   ❌ Cursor not moving")
+                    print(f"  ❌ Cursor not moving")
                     return False
             else:
                 no_move_counter = 0
         
-        print(f"   ⚠️ Max iterations reached")
+        print(f"  ⚠️ Max iterations reached")
         self.total_movements += 1
         return False
     
     def save_calibration(self):
-        """Save"""
+        """Save calibration"""
         data = {
             'timestamp': datetime.now().isoformat(),
             'distance_to_max_hid': self.distance_to_max_hid,
@@ -402,10 +375,10 @@ class SafeAdaptiveController:
         }
         with open(self.calibration_file, 'w') as f:
             json.dump(data, f, indent=2)
-        print(f"\n💾 Saved")
+        print(f"\n💾 Saved calibration")
     
     def load_calibration(self):
-        """Load"""
+        """Load calibration"""
         if not self.calibration_file.exists():
             return False
         
@@ -426,16 +399,18 @@ class SafeAdaptiveController:
 
 
 class CursorController:
-    """Main"""
+    """Main cursor controller"""
     
     def __init__(self):
         self.monitor_manager = MonitorManager()
         self.hardware = HardwareInterface()
         self.controller = None
+        self.bridge_system = self.monitor_manager  # Alias for compatibility
     
-    async def initialize(self):
+    async def start(self):
+        """Initialize controller"""
         print("\n" + "="*80)
-        print("🚀 SAFE CURSOR CONTROLLER v2")
+        print("🚀 HARDWARE RUBBER DUCKY CONTROLLER")
         print("="*80)
         
         if not self.hardware.connect():
@@ -452,29 +427,48 @@ class CursorController:
         print("✅ READY")
         return True
     
+    async def initialize(self):
+        """Alias for start()"""
+        return await self.start()
+    
     def calibrate(self):
+        """Run calibration"""
         self.controller.comprehensive_calibration()
     
     def move_to(self, x, y):
+        """Move to position"""
         success = self.controller.safe_move_to(x, y)
         self.controller.save_calibration()
         return success
     
+    async def execute_script(self, script):
+        """Execute DuckyScript"""
+        # Simple implementation for compatibility
+        lines = script.strip().split('\n')
+        for line in lines:
+            if line.strip() and not line.startswith('REM'):
+                self.hardware.send_command_and_wait(line, timeout=2)
+                await asyncio.sleep(0.1)
+    
     def shutdown(self):
+        """Shutdown controller"""
         self.hardware.disconnect()
+    
+    def stop(self):
+        """Alias for shutdown"""
+        self.shutdown()
 
 
 async def main():
+    """Interactive menu"""
     controller = CursorController()
     
-    if not await controller.initialize():
+    if not await controller.start():
         print("\n⚠️ Running calibration...")
         input("Press Enter...")
-        
         await controller.monitor_manager.initialize()
         controller.controller = SafeAdaptiveController(controller.hardware, controller.monitor_manager)
         controller.calibrate()
-        
         controller.shutdown()
         return
     
@@ -482,8 +476,8 @@ async def main():
         print("\n" + "="*80)
         print("MENU")
         print("1. Re-calibrate")
-        print("2. Test (1500, 800)")
-        print("3. Custom")
+        print("2. Test move (1500, 800)")
+        print("3. Custom position")
         print("4. Stats")
         print("0. Exit")
         print("="*80)
@@ -498,16 +492,15 @@ async def main():
             controller.move_to(1500, 800)
         elif choice == '3':
             try:
-                coords = input("(x,y): ").strip()
+                coords = input("Enter (x,y): ").strip()
                 x, y = map(int, coords.split(','))
                 controller.move_to(x, y)
             except:
-                print("❌ Invalid")
+                print("❌ Invalid coordinates")
         elif choice == '4':
             c = controller.controller
             print(f"\nTotal: {c.total_movements} | Success: {c.successful_movements} | Overshoots: {c.overshoot_count}")
-        
-        input("\nPress Enter...")
+            input("\nPress Enter...")
     
     controller.shutdown()
 
