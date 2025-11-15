@@ -7,7 +7,7 @@ from utils.config import (
     MQTT_DUCKY_TOPIC,
     MQTT_DUCKY_USER,
     MQTT_DUCKY_PASS,
-    LAPTOP_CONTROL_PASS
+    LAPTOP_CONTROL_PASS 
 )
 
 

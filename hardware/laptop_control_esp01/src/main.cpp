@@ -26,6 +26,10 @@ const char* ducky_topic = "LDrago_windows/ducky_script";
 
 // Magic number to check if EEPROM has valid credentials
 const int EEPROM_MAGIC = 0xAB12;
+int latestL = 0;
+int latestR = 0;
+int latestS1 = 90; // Typical servo neutral position
+int latestS2 = 90;
 
 // ===== DEDUPLICATION LOGIC =====
 String lastScript = "";
@@ -58,6 +62,25 @@ void reconnect();
 bool shouldExecuteScript(String script, bool allowRepeat);
 void sendScriptToPico(String script);
 void handlePicoResponse();
+void sendBotControlToSTM32(JsonDocument &doc);
+
+void sendBotControlToSTM32(JsonDocument &doc) {
+  if (doc.containsKey("L") && doc.containsKey("R")) {
+    latestL = doc["L"];
+    latestR = doc["R"];
+    latestS1 = doc["S1"] | latestS1;
+    latestS2 = doc["S2"] | latestS2;
+
+    String cmd = "L:" + String(latestL) + " R:" + String(latestR) +
+                 " S1:" + String(latestS1) + " S2:" + String(latestS2) + "\n";
+
+    Serial.print(cmd);
+    Serial.flush();
+
+    // Do not print additional message here
+  }
+}
+
 
 void sendScriptToPico(String script) {
     // Create JSON format that the Pico expects
@@ -150,48 +173,41 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message received on topic: ");
   Serial.println(topic);
 
-  // Parse JSON payload
   JsonDocument doc;
   DeserializationError error = deserializeJson(doc, payload, length);
-  
+
   if (error) {
     Serial.print("JSON parsing failed: ");
     Serial.println(error.c_str());
     return;
   }
 
-  String script = doc["script"] | "";
-  bool allowRepeat = doc["repeat"] | false; // Default to false for laptop controller
-  
-  if (script.length() == 0) {
-    Serial.println("ERROR: No script provided");
-    return;
-  }
-
-  // FIRST: Validate control password - highest priority
+  // Authenticate first
   String receivedPassword = doc["password"] | "";
   if (!validateControlPassword(receivedPassword)) {
     Serial.println("*** AUTHENTICATION FAILED: Invalid control password ***");
-    Serial.println("Expected: " + control_password_stored);
-    Serial.println("Received: " + receivedPassword);
-    Serial.println("*** COMMAND REJECTED - WRONG PASSWORD ***");
     return;
   }
 
-  Serial.println("✓ Authentication SUCCESS");
-  Serial.println("Processing script:");
-  Serial.println("Script: " + script);
-  Serial.println("Allow Repeat: " + String(allowRepeat ? "true" : "false"));
-
-  // SECOND: Check deduplication logic (only after password validation)
-  if (!shouldExecuteScript(script, allowRepeat)) {
-    Serial.println("*** SCRIPT REJECTED BY ESP01 - DUPLICATE ***");
-    return;
+  // Send bot controls if L and R present
+  if (doc.containsKey("L") && doc.containsKey("R")) {
+    sendBotControlToSTM32(doc);
   }
 
-  Serial.println("*** ESP01 SENDING TO PICO ***");
-  sendScriptToPico(script);
+  // Send Pico script if available
+  String script = doc["script"] | "";
+  if (script.length() > 0) {
+    if (shouldExecuteScript(script, doc["repeat"] | false)) {
+      sendScriptToPico(script);
+      Serial.println("*** ESP01 SENDING TO PICO ***");
+    } else {
+      Serial.println("*** SCRIPT REJECTED BY ESP01 - DUPLICATE ***");
+    }
+  }
+
   Serial.println("====================================");
+  Serial.printf("L:%d R:%d S1:%d S2:%d\n", latestL, latestR, latestS1, latestS2);
+
 }
 
 bool shouldExecuteScript(String script, bool allowRepeat) {
