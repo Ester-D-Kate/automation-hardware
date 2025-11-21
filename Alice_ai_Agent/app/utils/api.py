@@ -1,11 +1,17 @@
-from typing import Optional
+from typing import Optional, Dict
 from fastapi import APIRouter, UploadFile, File, HTTPException, status, Header, Request
 from fastapi.responses import JSONResponse
 from io import BytesIO
 import logging
 
 from utils.process_audio import process_audio_input
-from utils.search import perform_search 
+from utils.search import perform_search
+from utils.intelligent_search_engine import IntelligentSearchEngine
+from utils.enhanced_search_engine import EnhancedSearchEngine
+from utils.models import (
+    IntelligentSearchResponse, EnhancedSearchResponse, SimpleScrapeResponse,
+    SystemStatusResponse, SearchRequest, ScrapeRequest
+)
 
 from mqtt_utils.mqtt_ducky_windows import publish_ducky_script_to_mqtt, reset_last_command
 from mqtt_utils.mqtt_appliances import publish_appliance_command_to_mqtt
@@ -13,6 +19,10 @@ from mqtt_utils.mqtt_appliances import publish_appliance_command_to_mqtt
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# Initialize search engines
+intelligent_search_engine = IntelligentSearchEngine()
+enhanced_search_engine = EnhancedSearchEngine()
 
 conversation_contexts = {}
 
@@ -465,6 +475,159 @@ async def demo_conversation(user_id: Optional[str] = Header("demo_user")):
         return JSONResponse(
             status_code=500,
             content={"status": "error", "message": str(e)}
+        )
+
+@router.post("/intelligent-search")
+async def intelligent_search_endpoint(request: SearchRequest) -> IntelligentSearchResponse:
+    """
+    NEW intelligent search endpoint with AI URL scoring + parallel processing.
+    
+    Features:
+    - Collects 5x more URLs than requested
+    - Uses AI (Llama 3.3 70B primary, Llama Scout fallback) to score URL relevance
+    - Uses hardware-aware parallel scraping for efficient results
+    - Returns comprehensive results with AI insights and performance metrics
+    """
+    try:
+        logger.info(f"Intelligent search request: {request.query}")
+        
+        result = await intelligent_search_engine.intelligent_search_and_scrape(
+            query=request.query,
+            num_results=request.num_results,
+            use_ai_scoring=request.use_ai_scoring
+        )
+        
+        return JSONResponse(content=result)
+        
+    except Exception as e:
+        logger.error(f"Intelligent search error: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "status": "error",
+                "error": str(e),
+                "query": request.query,
+                "results": [],
+                "ai_insights": {"summary": "Search failed", "recommendations": str(e)},
+                "performance_metrics": {"total_duration": 0, "error": True},
+                "hardware_stats": {},
+                "search_metadata": {},
+                "intelligent_features": {}
+            }
+        )
+
+@router.post("/real-search")
+async def real_search_endpoint(request: SearchRequest) -> EnhancedSearchResponse:
+    """
+    Enhanced search with multiple engines endpoint.
+    
+    Features:
+    - Multiple search engine aggregation
+    - Parallel content scraping
+    - Hardware-aware processing
+    - Performance metrics
+    """
+    try:
+        logger.info(f"Enhanced search request: {request.query}")
+        
+        result = await enhanced_search_engine.enhanced_search(
+            query=request.query,
+            num_results=request.num_results
+        )
+        
+        return JSONResponse(content=result)
+        
+    except Exception as e:
+        logger.error(f"Enhanced search error: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "status": "error",
+                "error": str(e),
+                "query": request.query,
+                "results": [],
+                "metadata": {},
+                "search_insights": {}
+            }
+        )
+
+@router.get("/search")
+async def legacy_search_endpoint(query: str = "current weather") -> Dict:
+    """
+    Legacy direct search endpoint (maintains backward compatibility).
+    """
+    try:
+        logger.info(f"Legacy search request: {query}")
+        result = perform_search(query)
+        return JSONResponse(content=result)
+        
+    except Exception as e:
+        logger.error(f"Legacy search error: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"status": "error", "error": str(e)}
+        )
+
+@router.post("/scrape")
+async def scrape_endpoint(request: ScrapeRequest) -> SimpleScrapeResponse:
+    """
+    Direct URL scraping endpoint.
+    
+    Features:
+    - Direct URL content extraction
+    - Clean content processing
+    - Metadata extraction
+    """
+    try:
+        logger.info(f"Scrape request: {request.url}")
+        
+        result = await enhanced_search_engine.simple_scrape(request.url)
+        
+        return JSONResponse(content=result)
+        
+    except Exception as e:
+        logger.error(f"Scrape error: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "status": "error",
+                "error": str(e),
+                "url": request.url,
+                "content": "",
+                "metadata": {}
+            }
+        )
+
+@router.get("/system-status")
+async def system_status_endpoint() -> SystemStatusResponse:
+    """
+    Get intelligent search engine system status.
+    
+    Returns:
+    - Component status
+    - Hardware performance
+    - Capabilities and recommendations
+    """
+    try:
+        logger.info("System status request")
+        
+        result = await intelligent_search_engine.get_system_status()
+        
+        return JSONResponse(content=result)
+        
+    except Exception as e:
+        logger.error(f"System status error: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "status": "error",
+                "error": str(e),
+                "components": {},
+                "current_performance": {},
+                "hardware_info": {},
+                "recommendations": {},
+                "capabilities": {}
+            }
         )
 
 @router.post("/upload_screenshot")
